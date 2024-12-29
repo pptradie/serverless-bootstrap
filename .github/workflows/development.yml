@@ -1,0 +1,115 @@
+name: DEPLOY DEVELOPMENT BRANCH
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  test:
+    name: Test and Coverage Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: npm-cache
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage threshold
+        run: |
+          npm run test:coverage
+          if [ $? -ne 0 ]; then
+            echo "Tests failed or coverage threshold not met"
+            exit 1
+          fi
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: development
+          fail_ci_if_error: true
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage-dev
+          path: coverage/
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: npm-cache
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Cache Serverless dependencies
+        uses: actions/cache@v3
+        with:
+          path: .serverless
+          key: ${{ runner.os }}-serverless-${{ hashFiles('serverless.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-serverless-
+
+      - name: Install dependencies
+        run: npm ci
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+
+      - name: Create .env file
+        run: |
+          touch .env
+          echo -e "APP_BASE_URL=${{ secrets.DEV_APP_BASE_URL }}\nVPC_SECURITY_GROUP_ID_1=${{ secrets.DEV_VPC_SECURITY_GROUP_ID_1 }}\nVPC_SUBNET_ID_1=${{ secrets.DEV_VPC_SUBNET_ID_1 }}\nVPC_SUBNET_ID_2=${{ secrets.DEV_VPC_SUBNET_ID_2 }}\nDB_HOST=${{ secrets.DEV_DB_HOST }}\nDB_NAME=${{ secrets.DEV_DB_NAME }}\nDB_USERNAME=${{ secrets.DEV_DB_USERNAME }}\nDB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}" >> .env
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.DEV_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
+          aws-region: ap-southeast-2
+
+      - name: Deploy to Development
+        id: deploy
+        uses: serverless/github-action@v3.1
+        with:
+          args: deploy --stage dev --verbose
