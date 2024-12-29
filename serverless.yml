@@ -15,7 +15,7 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: ap-southeast-2
-  profile: ${self:custom.profiles.${sls:stage}}
+  # profile: ${self:custom.profiles.${sls:stage}}
 
   logs:
     httpApi:
