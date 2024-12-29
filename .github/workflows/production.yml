@@ -41,21 +41,6 @@ jobs:
             exit 1
           fi
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          flags: production
-          fail_ci_if_error: true
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: code-coverage-prod
-          path: coverage/
-          retention-days: 14
-
   deploy:
     name: Deploy
     needs: test
