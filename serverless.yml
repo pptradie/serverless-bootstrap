@@ -1,0 +1,54 @@
+service: serverless-bootstrap
+
+frameworkVersion: "3"
+
+org: null
+app: null
+
+custom:
+  profiles:
+    dev: pnr
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ap-southeast-2
+  profile: ${self:custom.profiles.${sls:stage}}
+
+  logs:
+    httpApi:
+      format: '{"requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod", "routeKey":"$context.routeKey", "status":"$context.status", "protocol":"$context.protocol", "responseLength":"$context.responseLength"}'
+
+  httpApi:
+    cors:
+      allowedOrigins: ${env:APP_BASE_URL}
+      allowedHeaders:
+        - Authorization
+        - Content-Type
+      allowedMethods:
+        - GET
+        - POST
+        - OPTIONS
+
+  environment:
+    DB_HOST: ${env:DB_HOST}
+    DB_NAME: ${env:DB_NAME}
+    DB_USERNAME: ${env:DB_USERNAME}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+
+functions:
+  dealFind:
+    handler: src/functions/deal/dealFind.handler
+    events:
+      - httpApi:
+          path: /deal/find
+          method: get
+
+  dealSave:
+    handler: src/functions/deal/dealSave.handler
+    events:
+      - httpApi:
+          path: /deal/save
+          method: post

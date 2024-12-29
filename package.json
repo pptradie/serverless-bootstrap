@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "mysql2": "^2.3.3",
+    "sequelize": "^6.23.1",
+    "yup": "^1.6.1"
+  },
+  "devDependencies": {
+    "jest": "^29.0.2"
+  },
+  "scripts": {
+    "test": "jest --coverage=true",
+    "test:coverage": "npm run test -- --coverage --bail --watchAll=false || exit 0"
+  }
+}
