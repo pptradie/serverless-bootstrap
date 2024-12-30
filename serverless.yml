@@ -1,4 +1,4 @@
-service: ${opt:stage}-serverless-bootstrap
+service: serverless-bootstrap
 
 frameworkVersion: "3"
 
