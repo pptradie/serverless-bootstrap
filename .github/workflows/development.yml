@@ -87,6 +87,17 @@ jobs:
           touch .env
           echo -e "APP_BASE_URL=${{ secrets.DEV_APP_BASE_URL }}\nVPC_SECURITY_GROUP_ID_1=${{ secrets.DEV_VPC_SECURITY_GROUP_ID_1 }}\nVPC_SUBNET_ID_1=${{ secrets.DEV_VPC_SUBNET_ID_1 }}\nVPC_SUBNET_ID_2=${{ secrets.DEV_VPC_SUBNET_ID_2 }}\nDB_HOST=${{ secrets.DEV_DB_HOST }}\nDB_NAME=${{ secrets.DEV_DB_NAME }}\nDB_USERNAME=${{ secrets.DEV_DB_USERNAME }}\nDB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}" >> .env
 
+      - name: Extended Debug
+        run: |
+          echo "Repository: ${GITHUB_REPOSITORY}"
+          echo "Reference: ${GITHUB_REF}"
+          echo "Action: ${GITHUB_ACTION}"
+          echo "Actor: ${GITHUB_ACTOR}"
+          echo "Event Name: ${GITHUB_EVENT_NAME}"
+          echo "Workflow: ${GITHUB_WORKFLOW}"
+          echo "Job: ${GITHUB_JOB}"
+          echo "Environment: ${GITHUB_ENVIRONMENT}"
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
