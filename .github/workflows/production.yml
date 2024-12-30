@@ -57,18 +57,14 @@ jobs:
           name: coverage-report
           path: coverage/lcov.info # Specify exact file
           if-no-files-found: error # Will fail if files not found
+  
   sonarqube:
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        # Disabling shallow clones is recommended for improving the relevancy of reporting
-        fetch-depth: 0
-    - name: SonarQube Scan
-      uses: SonarSource/sonarqube-scan-action@v4.2.1 # Ex: v4.1.0, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    needs: test
+    uses: ./.github/workflows/sonarqube.yml
+    with:
+      branch_name: 'main'
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   deploy:
     name: Deploy
