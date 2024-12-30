@@ -1,13 +1,13 @@
-service: serverless-bootstrap
+service: ${self:provider.stage}-serverless-bootstrap
 
 frameworkVersion: "3"
 
 org: null
 app: null
 
-custom:
-  profiles:
-    dev: pnr
+# custom:
+#   profiles:
+#     dev: pnr
 
 useDotenv: true
 
