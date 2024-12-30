@@ -1,0 +1,51 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ staging, main ]
+
+jobs:
+  validation:
+    name: Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Lint
+        run: npm run lint
+        
+      - name: Run Tests
+        run: npm run test:coverage
+        
+      - name: Upload coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/lcov.info
+          if-no-files-found: error
+
+      - name: Security Audit
+        run: npm audit
+        continue-on-error: true  # Don't fail PR for security warnings
+
+  sonarqube:
+    needs: validation
+    uses: ./.github/workflows/sonarqube.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      branch_name: ${{ github.head_ref }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}

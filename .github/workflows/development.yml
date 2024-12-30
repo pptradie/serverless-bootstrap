@@ -61,7 +61,7 @@ jobs:
     needs: test
     uses: ./.github/workflows/sonarqube.yml
     with:
-      branch_name: 'staging'
+      branch_name: "staging"
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
