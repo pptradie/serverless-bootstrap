@@ -57,7 +57,8 @@ jobs:
           name: coverage-report
           path: coverage/lcov.info # Specify exact file
           if-no-files-found: error # Will fail if files not found
-  sonarqube:
+  code-analysis:
+    name: Code Analysis & Security
     needs: test
     uses: ./.github/workflows/sonarqube.yml
     with:
@@ -69,7 +70,7 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [lint, test, sonarqube]
+    needs: [lint, test, code-analysis]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
