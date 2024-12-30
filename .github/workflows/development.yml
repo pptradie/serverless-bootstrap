@@ -16,19 +16,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      
+      - name: Download lock file
+        uses: actions/download-artifact@v3
+        with:
+          name: npm-lock
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 18.x
           cache: "npm"
+          
       - uses: actions/cache/restore@v3
         with:
           path: |
             node_modules
             ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
+          
       - name: Run ESLint
         run: npm run lint
-        continue-on-error: false
 
   test:
     name: Test and Coverage

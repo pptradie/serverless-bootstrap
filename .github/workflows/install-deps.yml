@@ -1,3 +1,4 @@
+# .github/workflows/install-deps.yml
 name: Install Dependencies
 
 on:
@@ -7,23 +8,28 @@ jobs:
   install:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+      
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-          cache: "npm"
 
-      - name: Install dependencies
+      - name: Install dependencies and generate lock file
         run: |
-          rm -f package-lock.json
           npm install --no-fund --no-audit
-
+          
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: |
             node_modules
             ~/.npm
+            package-lock.json
           key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+
+      - name: Upload lock file
+        uses: actions/upload-artifact@v3
+        with:
+          name: npm-lock
+          path: package-lock.json
