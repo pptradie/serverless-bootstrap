@@ -30,7 +30,7 @@ jobs:
     needs: [lint]
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Use Node.js 18.x
         uses: actions/setup-node@v3
         with:
@@ -52,43 +52,26 @@ jobs:
       # Upload coverage results with error handling
       - name: Upload coverage results
         uses: actions/upload-artifact@v3
-        if: always()  # Try to upload even if tests fail
+        if: always() # Try to upload even if tests fail
         with:
           name: coverage-report
-          path: coverage/lcov.info  # Specify exact file
-          if-no-files-found: error  # Will fail if files not found
-
-  sonarcloud:
-    name: SonarCloud Analysis
+          path: coverage/lcov.info # Specify exact file
+          if-no-files-found: error # Will fail if files not found
+  sonarqube:
     runs-on: ubuntu-latest
-    needs: [test]
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      # Download with matching name and path
-      - name: Download coverage results
-        uses: actions/download-artifact@v3
-        with:
-          name: coverage-report
-          path: coverage
-
-      # Debug downloaded content
-      - name: Debug downloaded coverage
-        run: |
-          ls -la
-          ls -la coverage || echo "Coverage directory not found"
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - uses: actions/checkout@v4
+      with:
+        # Disabling shallow clones is recommended for improving the relevancy of reporting
+        fetch-depth: 0
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@<action version> # Ex: v4.1.0, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   deploy:
     name: Deploy
-    needs: [lint, test, sonarcloud]
+    needs: [lint, test]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
