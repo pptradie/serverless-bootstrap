@@ -12,6 +12,10 @@ on:
     secrets:
       SONAR_TOKEN:
         required: true
+      SONAR_PROJECT_KEY:
+        required: true
+      SONAR_ORGANIZATION:
+        required: true
 
 jobs:
   sonarqube:
@@ -33,18 +37,32 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@v4.2.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.pullrequest.key=${{ inputs.pr_number }}
             -Dsonar.pullrequest.branch=${{ inputs.branch_name }}
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.sources=src
+            -Dsonar.tests=src/tests
+            -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,src/tests/**/*
 
       - name: SonarQube Scan for Branch
         if: inputs.pr_number == ''
         uses: sonarsource/sonarqube-scan-action@v4.2.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.branch.name=${{ inputs.branch_name }}
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.sources=src
+            -Dsonar.tests=src/tests
+            -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,src/tests/**/*
