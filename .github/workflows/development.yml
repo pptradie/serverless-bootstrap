@@ -45,11 +45,12 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: development
-      url: ${{ steps.deploy.outputs.url }}
     permissions:
       id-token: write
       contents: read
-
+    strategy:
+      matrix:
+        node-version: [18.x]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -103,6 +104,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.DEV_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
           aws-region: ap-southeast-2
+          audience: sts.amazonaws.com
 
       - name: Deploy to Development
         id: deploy
