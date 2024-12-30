@@ -21,7 +21,9 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install --no-fund --no-audit    # Suppress warnings
+          npm install -g npm@latest           # Use latest npm
 
       - name: Check Code Format    # Add format check before lint
         run: npm run format:check  # Will fail if code is not properly formatted
