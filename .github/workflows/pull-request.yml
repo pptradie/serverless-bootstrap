@@ -5,28 +5,32 @@ on:
     branches: [ staging, main ]
 
 jobs:
+  install:
+    name: Install Dependencies
+    uses: ./.github/workflows/install-deps.yml
+
   validation:
-    name: Validation & Quality Checks  # More descriptive name
+    name: Validation & Quality Checks
+    needs: install
     runs-on: ubuntu-latest
-    timeout-minutes: 15    # Add timeout to prevent hanging builds
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 18.x
           cache: "npm"
+      - uses: actions/cache/restore@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
 
-      - name: Install dependencies
-        run: |
-          npm install --no-fund --no-audit    # Suppress warnings
-          npm install -g npm@latest           # Use latest npm
-
-      - name: Check Code Format    # Add format check before lint
-        run: npm run format:check  # Will fail if code is not properly formatted
+      - name: Check Code Format
+        run: npm run format:check
 
       - name: Run Lint
         run: npm run lint
@@ -43,9 +47,9 @@ jobs:
 
       - name: Security Audit
         run: npm audit
-        continue-on-error: true  # Don't fail PR for security warnings
+        continue-on-error: true
 
-  code-analysis:    # Rename for consistency with other workflows
+  code-analysis:
     name: Code Analysis & Security
     needs: validation
     uses: ./.github/workflows/sonarqube.yml

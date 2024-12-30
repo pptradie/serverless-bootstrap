@@ -6,57 +6,56 @@ on:
       - staging
 
 jobs:
+  install:
+    name: Install Dependencies
+    uses: ./.github/workflows/install-deps.yml
+
   lint:
     name: Code Quality Check
+    needs: install
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 18.x
           cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
+      - uses: actions/cache/restore@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
       - name: Run ESLint
         run: npm run lint
         continue-on-error: false
+
   test:
     name: Test and Coverage
-    runs-on: ubuntu-latest
     needs: [lint]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 18.x
           cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
+      - uses: actions/cache/restore@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
       - name: Run tests with coverage
         run: npm run test:coverage
-
-      # Verify coverage directory exists and show its contents
-      - name: Debug coverage directory
-        run: |
-          ls -la
-          ls -la coverage || echo "Coverage directory not found"
-
-      # Upload coverage results with error handling
       - name: Upload coverage results
         uses: actions/upload-artifact@v3
-        if: always() # Try to upload even if tests fail
+        if: always()
         with:
           name: coverage-report
-          path: coverage/lcov.info # Specify exact file
-          if-no-files-found: error # Will fail if files not found
+          path: coverage/lcov.info
+          if-no-files-found: error
+
   code-analysis:
     name: Code Analysis & Security
     needs: test
@@ -67,7 +66,7 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
       SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-
+  # Place holder step for deployments
   deploy:
     name: Deploy
     needs: [lint, test, code-analysis]
@@ -75,55 +74,5 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    strategy:
-      matrix:
-        node-version: [18.x]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18.x
-          cache: "npm"
-          cache-dependency-path: package-lock.json
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        id: npm-cache
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Cache Serverless dependencies
-        uses: actions/cache@v3
-        with:
-          path: .serverless
-          key: ${{ runner.os }}-serverless-${{ hashFiles('serverless.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-serverless-
-
-      # - name: Install dependencies
-      #   run: npm ci
-      #   if: steps.npm-cache.outputs.cache-hit != 'true'
-
-      # - name: Create .env file
-      #   run: |
-      #     touch .env
-      #     echo -e "APP_BASE_URL=${{ secrets.DEV_APP_BASE_URL }}\nDB_HOST=${{ secrets.DEV_DB_HOST }}\nDB_NAME=${{ secrets.DEV_DB_NAME }}\nDB_USERNAME=${{ secrets.DEV_DB_USERNAME }}\nDB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}" >> .env
-
-      # - name: Configure AWS Credentials
-      #   uses: aws-actions/configure-aws-credentials@v1
-      #   with:
-      #     role-to-assume: ${{ secrets.DEV_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
-      #     aws-region: ap-southeast-2
-      #     audience: sts.amazonaws.com
-
-      # - name: Deploy to Development
-      #   id: deploy
-      #   uses: serverless/github-action@v3.1
-      #   with:
-      #     args: deploy --stage dev --verbose
+      - uses: actions/checkout@v3
