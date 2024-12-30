@@ -1,18 +1,23 @@
 module.exports = {
-  root: true,
   env: {
     node: true,
-    jest: true,
     es2021: true,
+    jest: true,
   },
-  extends: "eslint:recommended",
+  extends: [
+    "eslint:recommended",
+    "plugin:prettier/recommended", // Integrates Prettier with ESLint
+  ],
   parserOptions: {
-    ecmaVersion: 2021,
+    ecmaVersion: 12,
+    sourceType: "module",
   },
   rules: {
-    "no-unused-vars": "error",
-    "no-console": "off",
-    semi: ["error", "always"],
-    quotes: ["error", "double"],
+    "prettier/prettier": "error",
+    "no-console": ["warn", { allow: ["warn", "error"] }],
+    "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    "no-duplicate-imports": "error",
+    "no-var": "error",
+    "prefer-const": "error",
   },
 };
