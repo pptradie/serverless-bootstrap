@@ -7,5 +7,14 @@
   "useTabs": false,
   "bracketSpacing": true,
   "arrowParens": "always",
-  "endOfLine": "lf"
+  "endOfLine": "lf",
+  "overrides": [
+    {
+      "files": "*.yml",
+      "options": {
+        "singleQuote": false,
+        "printWidth": 120
+      }
+    }
+  ]
 }

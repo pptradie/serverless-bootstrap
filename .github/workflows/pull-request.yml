@@ -2,7 +2,7 @@ name: PULL REQUEST checks
 
 on:
   pull_request:
-    branches: [ staging, main ]
+    branches: [staging, main]
 
 jobs:
   validation:
@@ -17,22 +17,22 @@ jobs:
       - name: Use Node.js 18.x
         uses: actions/setup-node@v3
         with:
-          node-version: "18.17.1"  # AWS Lambda uses Node.js 18.x
+          node-version: "18.17.1" # AWS Lambda uses Node.js 18.x
           cache: "npm"
 
       - name: Install dependencies
         run: |
           npm install --no-fund --no-audit --legacy-peer-deps
-          
+
       - name: Check Code Format
         run: npm run format:check
 
       - name: Run Lint
         run: npm run lint
-        
+
       - name: Run Tests
         run: npm run test:coverage
-        
+
       - name: Upload coverage results
         uses: actions/upload-artifact@v3
         with:
