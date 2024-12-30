@@ -1,0 +1,66 @@
+name: Reusable SonarQube Analysis
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: false
+        type: string
+      branch_name:
+        required: false
+        type: string
+    secrets:
+      SONAR_TOKEN:
+        required: true
+      SONAR_PROJECT_KEY:
+        required: true
+      SONAR_ORGANIZATION:
+        required: true
+
+jobs:
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage
+
+      - name: SonarQube Scan for PR
+        if: inputs.pr_number != ''
+        uses: sonarsource/sonarqube-scan-action@v4.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.pullrequest.key=${{ inputs.pr_number }}
+            -Dsonar.pullrequest.branch=${{ inputs.branch_name }}
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.sources=src
+            -Dsonar.tests=src/tests
+            -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,src/tests/**/*
+
+      - name: SonarQube Scan for Branch
+        if: inputs.pr_number == ''
+        uses: sonarsource/sonarqube-scan-action@v4.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.branch.name=${{ inputs.branch_name }}
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.sources=src
+            -Dsonar.tests=src/tests
+            -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,src/tests/**/*
