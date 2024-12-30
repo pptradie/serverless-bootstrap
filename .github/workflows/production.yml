@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-  release:
-    types: [published]
 
 jobs:
   test:
@@ -45,13 +43,12 @@ jobs:
     name: Deploy
     needs: test
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.url }}
     permissions:
       id-token: write
       contents: read
-
+    strategy:
+      matrix:
+        node-version: [18.x]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -94,8 +91,9 @@ jobs:
         with:
           role-to-assume: ${{ secrets.PROD_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
           aws-region: ap-southeast-2
+          audience: sts.amazonaws.com
 
-      - name: Deploy to Production
+      - name: Deploy to production
         id: deploy
         uses: serverless/github-action@v3.1
         with:
