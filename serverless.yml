@@ -5,17 +5,12 @@ frameworkVersion: "3"
 org: null
 app: null
 
-custom:
-  profiles:
-    dev: pnr
-
 useDotenv: true
 
 provider:
   name: aws
   runtime: nodejs18.x
   region: ap-southeast-2
-  profile: ${self:custom.profiles.${sls:stage}}
 
   logs:
     httpApi:
