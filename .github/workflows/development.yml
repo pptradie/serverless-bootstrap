@@ -26,6 +26,7 @@ jobs:
         continue-on-error: false
   test:
     name: Test and Coverage Check
+    needs: [lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -59,7 +60,7 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: test
+    needs: [lint, test]  
     runs-on: ubuntu-latest
     permissions:
       id-token: write
