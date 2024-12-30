@@ -42,10 +42,10 @@ const sequelize = new Sequelize(
        */
       evict: 10000,
     },
-    logging: (msg) => {
-      console.log("DB Query ::: ", msg);
-    },
-    // logging: false,
+    // logging: (msg) => {
+    //   console.log("DB Query ::: ", msg);
+    // },
+    logging: false,
   }
 );
 
