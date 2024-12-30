@@ -18,6 +18,9 @@
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:watch": "jest --watch",
+    "prepare": "husky install",
     "test": "jest",
     "test:coverage": "jest --coverage --coverageThreshold='{\"global\":{\"branches\":80,\"functions\":80,\"lines\":80,\"statements\":80}}'"
   },

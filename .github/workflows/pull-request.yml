@@ -6,8 +6,9 @@ on:
 
 jobs:
   validation:
-    name: Validation
+    name: Validation & Quality Checks  # More descriptive name
     runs-on: ubuntu-latest
+    timeout-minutes: 15    # Add timeout to prevent hanging builds
     steps:
       - uses: actions/checkout@v3
         with:
@@ -21,6 +22,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check Code Format    # Add format check before lint
+        run: npm run format:check  # Will fail if code is not properly formatted
 
       - name: Run Lint
         run: npm run lint
@@ -39,7 +43,8 @@ jobs:
         run: npm audit
         continue-on-error: true  # Don't fail PR for security warnings
 
-  sonarqube:
+  code-analysis:    # Rename for consistency with other workflows
+    name: Code Analysis & Security
     needs: validation
     uses: ./.github/workflows/sonarqube.yml
     with:
