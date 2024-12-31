@@ -230,4 +230,4 @@ Dive deeper into the architectural thinking:
 
 ---
 
-**Crafted with ❤️ to advance software engineering practices**
+**Crafted with ❤️ by Prabhath Perera**
