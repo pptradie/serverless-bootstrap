@@ -1,5 +1,10 @@
 # Serverless Bootstrap: Engineering Excellence Blueprint
 
+## 📄 Detailed Writeup
+[Building Great Software: A Serverless Architecture Blueprint](https://prabhathperera.medium.com/building-great-software-a-serverless-architecture-blueprint-4ea25499894e)
+
+Explore the comprehensive architectural thinking, design principles, and strategic considerations behind this serverless bootstrap project.
+
 ## 🎯 Project Purpose
 
 This serverless bootstrap project is a reference implementation demonstrating modern software engineering best practices, specifically tailored for serverless architectures using AWS Lambda, API Gateway, and Node.js.
@@ -218,7 +223,7 @@ serverless-bootstrap/
 ## 📝 Companion Article
 
 Dive deeper into the architectural thinking:
-[Building Great Software: A Serverless Architecture Blueprint](https://prabhathperera.medium.com/building-great-software-a-serverless-architecture-blueprint)
+[Building Great Software: A Serverless Architecture Blueprint](https://prabhathperera.medium.com/building-great-software-a-serverless-architecture-blueprint-4ea25499894e)
 
 ## 🚧 Disclaimer
 
