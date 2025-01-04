@@ -1,4 +1,4 @@
-# Serverless Bootstrap: Engineering Excellence Blueprint
+# Building Great Software: A Serverless Architecture Blueprint
 
 ## 📄 Detailed Writeup
 [Building Great Software: A Serverless Architecture Blueprint](https://prabhathperera.medium.com/building-great-software-a-serverless-architecture-blueprint-4ea25499894e)
