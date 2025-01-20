@@ -108,13 +108,13 @@ jobs:
     - name: Debug AWS Configuration
       run: |
         aws sts get-caller-identity
-        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-bus"
+        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-event-bus"
         echo "Checking EventBus: $EVENT_BUS_NAME"
         aws events describe-event-bus --name $EVENT_BUS_NAME || echo "EventBus not found"
 
     - name: Record Deployment Start
       run: |
-        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-bus"
+        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-event-bus"
         echo "Sending deployment start event to $EVENT_BUS_NAME"
         
         aws events put-events --entries '[{
@@ -133,7 +133,7 @@ jobs:
     - name: Record Deployment Result
       if: always()
       run: |
-        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-bus"
+        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-event-bus"
         STATUS="${{ steps.deploy.outcome }}"
         EVENT_TYPE="deployment_success"
         if [ "$STATUS" != "success" ]; then
@@ -153,7 +153,7 @@ jobs:
       if: always()
       run: |
         echo "Checking recent EventBridge events..."
-        aws events list-rules --event-bus-name serverless-bootstrap-prod-dora-bus
+        aws events list-rules --event-bus-name serverless-bootstrap-prod-dora-event-bus
         
         echo "Checking Lambda logs..."
         LOG_GROUP="/aws/lambda/serverless-bootstrap-prod-doraMetrics"

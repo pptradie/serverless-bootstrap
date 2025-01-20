@@ -72,7 +72,7 @@ functions:
     handler: src/functions/dora/metrics.handler
     events:
       - eventBridge:
-          eventBus: ${self:service}-${sls:stage}-dora-bus
+          eventBus: ${self:service}-${sls:stage}-dora-event-bus
           pattern:
             source:
               - serverless-app
@@ -88,7 +88,7 @@ resources:
     DoraEventBus:
       Type: AWS::Events::EventBus
       Properties:
-        Name: ${self:service}-${sls:stage}-dora-bus
+        Name: ${self:service}-${sls:stage}-dora-event-bus
 
     DoraEventBusPolicy:
       Type: AWS::Events::EventBusPolicy
