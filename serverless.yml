@@ -7,8 +7,16 @@ app: null
 
 useDotenv: true
 
+custom:
+  profiles:
+    dev: convergix
+    prod: convergix
+
+useDotenv: true
+
 provider:
   name: aws
+  profile: ${self:custom.profiles.${sls:stage}}
   runtime: nodejs18.x
   region: ap-southeast-2
 
@@ -144,7 +152,6 @@ resources:
         RetentionInDays: 14
 
     # CloudWatch dashboard for DORA metrics visualization
-# CloudWatch dashboard for DORA metrics visualization
     DoraDashboard:
       Type: AWS::CloudWatch::Dashboard
       Properties:
