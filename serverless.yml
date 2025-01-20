@@ -106,81 +106,119 @@ resources:
     #       Action: events:PutEvents
     #       Resource: !GetAtt DoraEventBus.Arn
 
-    DoraDashboard:
-      Type: AWS::CloudWatch::Dashboard
-      Properties:
-        DashboardName: ${self:service}-${sls:stage}-dora-metrics
-        DashboardBody: !Sub |
+DoraDashboard:
+  Type: AWS::CloudWatch::Dashboard
+  Properties:
+    DashboardName: ${self:service}-${sls:stage}-dora-metrics
+    DashboardBody: !Sub |
+      {
+        "widgets": [
           {
-            "widgets": [
-              {
-                "type": "metric",
-                "width": 12,
-                "height": 6,
-                "properties": {
-                  "metrics": [
-                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "production", { "stat": "Sum", "period": 86400, "label": "Daily Deployments" } ]
-                  ],
-                  "view": "timeSeries",
-                  "title": "Deployment Frequency",
-                  "period": 86400,
-                  "region": "${AWS::Region}",
-                  "yAxis": {
-                    "left": {
-                      "min": 0
-                    }
-                  },
-                  "annotations": {
-                    "horizontal": []
-                  }
+            "type": "metric",
+            "width": 12,
+            "height": 6,
+            "properties": {
+              "metrics": [
+                [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { 
+                  "stat": "Sum", 
+                  "period": 300, 
+                  "label": "Deployments (5min)"
+                }]
+              ],
+              "view": "timeSeries",
+              "title": "Deployment Frequency",
+              "period": 300,
+              "region": "${AWS::Region}",
+              "yAxis": {
+                "left": {
+                  "min": 0
                 }
               },
-              {
-                "type": "metric",
-                "width": 12,
-                "height": 6,
-                "properties": {
-                  "metrics": [
-                    [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "production", { "stat": "Average" } ]
-                  ],
-                  "view": "timeSeries",
-                  "title": "Lead Time for Changes (Minutes)",
-                  "period": 86400,
-                  "region": "${AWS::Region}",
-                  "yAxis": {
-                    "left": {
-                      "min": 0
-                    }
-                  },
-                  "annotations": {
-                    "horizontal": []
-                  }
-                }
+              "annotations": {
+                "horizontal": []
               },
-              {
-                "type": "metric",
-                "width": 12,
-                "height": 6,
-                "properties": {
-                  "metrics": [
-                    [ { "expression": "FAILURES / TOTAL * 100", "label": "Change Failure Rate (%)", "id": "e1" } ],
-                    [ "${self:service}/DORA", "DeploymentFailure", "Environment", "production", { "id": "FAILURES", "stat": "Sum", "visible": false } ],
-                    [ ".", "DeploymentFrequency", "Environment", "production", { "id": "TOTAL", "stat": "Sum", "visible": false } ]
-                  ],
-                  "view": "timeSeries",
-                  "title": "Change Failure Rate",
-                  "period": 86400,
-                  "region": "${AWS::Region}",
-                  "yAxis": {
-                    "left": {
-                      "min": 0,
-                      "max": 100
-                    }
-                  },
-                  "annotations": {
-                    "horizontal": []
-                  }
-                }
+              "timeRange": {
+                "relativeStart": "-PT3H",
+                "relativeEnd": "PT0H"
               }
-            ]
+            }
+          },
+          {
+            "type": "metric",
+            "width": 12,
+            "height": 6,
+            "properties": {
+              "metrics": [
+                [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "prod", { 
+                  "stat": "Average",
+                  "period": 300,
+                  "label": "Lead Time (seconds)",
+                  "id": "leadTime"
+                }],
+                [{ 
+                  "expression": "leadTime/60", 
+                  "label": "Lead Time (minutes)", 
+                  "id": "leadTimeMin"
+                }]
+              ],
+              "view": "timeSeries",
+              "title": "Lead Time for Changes",
+              "period": 300,
+              "region": "${AWS::Region}",
+              "yAxis": {
+                "left": {
+                  "min": 0
+                }
+              },
+              "annotations": {
+                "horizontal": []
+              },
+              "timeRange": {
+                "relativeStart": "-PT3H",
+                "relativeEnd": "PT0H"
+              }
+            }
+          },
+          {
+            "type": "metric",
+            "width": 12,
+            "height": 6,
+            "properties": {
+              "metrics": [
+                [{ 
+                  "expression": "(FAILURES / TOTAL) * 100", 
+                  "label": "Change Failure Rate (%)", 
+                  "id": "e1"
+                }],
+                [ "${self:service}/DORA", "DeploymentFailure", "Environment", "prod", { 
+                  "id": "FAILURES", 
+                  "stat": "Sum", 
+                  "visible": false 
+                }],
+                [ ".", "DeploymentFrequency", "Environment", "prod", { 
+                  "id": "TOTAL", 
+                  "stat": "Sum", 
+                  "visible": false 
+                }]
+              ],
+              "view": "timeSeries",
+              "title": "Change Failure Rate",
+              "period": 300,
+              "region": "${AWS::Region}",
+              "yAxis": {
+                "left": {
+                  "min": 0,
+                  "max": 100
+                }
+              },
+              "annotations": {
+                "horizontal": []
+              },
+              "timeRange": {
+                "relativeStart": "-PT3H",
+                "relativeEnd": "PT0H"
+              }
+            }
           }
+        ]
+      }
