@@ -112,7 +112,7 @@ jobs:
         echo "bus_name=${EVENT_BUS_NAME}" >> $GITHUB_OUTPUT
         echo "Using EventBus: ${EVENT_BUS_NAME}"
 
-  - name: Record Deployment Start
+    - name: Record Deployment Start
       run: |
         EVENT_DETAIL=$(jq -c -n \
           --arg did "${{ github.run_id }}" \
