@@ -71,9 +71,6 @@ functions:
 
   doraMetrics:
     handler: src/functions/dora/metrics.handler
-    environment:
-      DORA_METRICS_NAMESPACE: "${self:service}/DORA"
-      ENVIRONMENT: ${sls:stage}
     events:
       - eventBridge:
           eventBus: ${self:custom.doraEventBusName}
@@ -86,6 +83,9 @@ functions:
               - deployment_failure
               - incident_start
               - incident_resolve
+    environment:
+      DORA_METRICS_NAMESPACE: "${self:service}/DORA"
+      ENVIRONMENT: ${sls:stage}
 
 resources:
   Resources:
@@ -93,7 +93,6 @@ resources:
       Type: AWS::Events::EventBus
       Properties:
         Name: ${self:custom.doraEventBusName}
-      DeletionPolicy: Retain
 
     DoraEventBusPolicy:
       Type: AWS::Events::EventBusPolicy
