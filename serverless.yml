@@ -15,7 +15,7 @@ custom:
 
 provider:
   name: aws
-  profile: ${self:custom.profiles.${sls:stage}}
+  # profile: ${self:custom.profiles.${sls:stage}}
   runtime: nodejs18.x
   region: ap-southeast-2
 
