@@ -79,22 +79,68 @@ jobs:
       matrix:
         node-version: [18.x]
     steps:
+    # Checkout code with history for commit timestamp
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Get full history for accurate timestamps
+
+    # Get deployment metadata for DORA metrics
+    - name: Get Deployment Details
+      id: deploy-meta
+      run: |
+        # Generate unique deployment ID
+        DEPLOY_ID=$(echo ${{ github.sha }} | cut -c1-8)-$(date +%s)
+        # Get commit timestamp
+        COMMIT_TIME=$(git log -1 --format=%cd --date=iso8601 ${{ github.sha }})
+        echo "::set-output name=deploy_id::$DEPLOY_ID"
+        echo "::set-output name=commit_time::$COMMIT_TIME"
+
+
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
     - run: npm ci
+
     - name: Create .env file
       run: |
         touch .env
         echo -e "APP_BASE_URL=${{ secrets.PROD_APP_BASE_URL }}\nDB_HOST=${{ secrets.PROD_DB_HOST }}\nDB_NAME=${{ secrets.PROD_DB_NAME }}\nDB_USERNAME=${{ secrets.PROD_DB_USERNAME }}\nDB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}" >> .env
+
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: ${{ secrets.PROD_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
         aws-region: ap-southeast-2
+
+    # Record deployment start for DORA metrics
+    - name: Record Deployment Start
+      run: |
+        aws events put-events --entries '[{
+          "Source": "serverless-app",
+          "DetailType": "deployment_start",
+          "Detail": "{\"deploymentId\":\"${{ steps.deploy-meta.outputs.deploy_id }}\",\"commitId\":\"${{ github.sha }}\",\"commitTime\":\"${{ steps.deploy-meta.outputs.commit_time }}\",\"branch\":\"${{ github.ref }}\"}",
+          "EventBusName": "serverless-bootstrap-prod-dora-bus"
+        }]'
+
     - name: serverless deploy
       uses: serverless/github-action@v3.1
       with:
         args: deploy --stage dev --verbose
+
+    # Record deployment result for DORA metrics
+    - name: Record Deployment Result
+      if: always()
+      run: |
+        STATUS="${{ steps.deploy.outcome }}"
+        EVENT_TYPE="deployment_success"
+        if [ "$STATUS" != "success" ]; then
+          EVENT_TYPE="deployment_failure"
+        fi
+        
+        aws events put-events --entries '[{
+          "Source": "serverless-app",
+          "DetailType": "'$EVENT_TYPE'",
+          "Detail": "{\"deploymentId\":\"${{ steps.deploy-meta.outputs.deploy_id }}\",\"commitId\":\"${{ github.sha }}\",\"commitTime\":\"${{ steps.deploy-meta.outputs.commit_time }}\",\"branch\":\"${{ github.ref }}\",\"status\":\"'$STATUS'\"}",
+          "EventBusName": "serverless-bootstrap-prod-dora-bus"
+        }]'
