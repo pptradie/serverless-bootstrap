@@ -15,6 +15,8 @@ const METRIC_NAMESPACE = process.env.DORA_METRICS_NAMESPACE;
  * @param {Object} dimensions - Additional dimensions beyond Environment
  */
 const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
+  console.log("putMetric:", name, value, unit, dimensions);
+
   const metricDimensions = [
     { Name: "Environment", Value: ENVIRONMENT },
     ...Object.entries(dimensions).map(([name, value]) => ({
@@ -123,6 +125,8 @@ exports.handler = async (event) => {
     console.log("Environment:", ENVIRONMENT);
     console.log("Metric Namespace:", METRIC_NAMESPACE);
     // Route event to appropriate processor
+    console.log("event[detail-type]:", event["detail-type"]);
+
     switch (event["detail-type"]) {
       case "deployment_start":
         await processDeploymentStart(event);
