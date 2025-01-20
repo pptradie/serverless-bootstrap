@@ -93,6 +93,7 @@ resources:
       Type: AWS::Events::EventBus
       Properties:
         Name: ${self:custom.doraEventBusName}
+      DeletionPolicy: Retain
 
     DoraEventBusPolicy:
       Type: AWS::Events::EventBusPolicy
