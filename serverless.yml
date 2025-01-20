@@ -89,22 +89,22 @@ functions:
 
 resources:
   Resources:
-    DoraEventBus:
-      Type: AWS::Events::EventBus
-      Properties:
-        Name: ${self:custom.doraEventBusName}
+    # DoraEventBus:
+    #   Type: AWS::Events::EventBus
+    #   Properties:
+    #     Name: ${self:custom.doraEventBusName}
 
-    DoraEventBusPolicy:
-      Type: AWS::Events::EventBusPolicy
-      DependsOn: DoraEventBus
-      Properties:
-        EventBusName: !Ref DoraEventBus
-        StatementId: AllowPutEvents
-        Statement:
-          Effect: Allow
-          Principal: "*"
-          Action: events:PutEvents
-          Resource: !GetAtt DoraEventBus.Arn
+    # DoraEventBusPolicy:
+    #   Type: AWS::Events::EventBusPolicy
+    #   DependsOn: DoraEventBus
+    #   Properties:
+    #     EventBusName: !Ref DoraEventBus
+    #     StatementId: AllowPutEvents
+    #     Statement:
+    #       Effect: Allow
+    #       Principal: "*"
+    #       Action: events:PutEvents
+    #       Resource: !GetAtt DoraEventBus.Arn
 
     DoraDashboard:
       Type: AWS::CloudWatch::Dashboard
