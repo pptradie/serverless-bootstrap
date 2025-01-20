@@ -69,6 +69,20 @@ jobs:
       SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
 
   # PLACE HOLDER STEPS FOR SERVERLESS DEPLOYMENT
+  # deploy:
+  #   name: Deploy
+  #   needs: [lint, test, code-analysis]
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   strategy:
+  #     matrix:
+  #       node-version: [18.x]
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+
   deploy:
     name: Deploy
     needs: [lint, test, code-analysis]
@@ -80,5 +94,24 @@ jobs:
       matrix:
         node-version: [18.x]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm ci
+    - name: Create .env file
+      run: |
+        touch .env
+        echo -e "APP_BASE_URL=${{ secrets.DEV_APP_BASE_URL }}\nDB_HOST=${{ secrets.DEV_DB_HOST }}\nDB_NAME=${{ secrets.DEV_DB_NAME }}\nDB_USERNAME=${{ secrets.DEV_DB_USERNAME }}\nDB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}" >> .env
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.DEV_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
+        aws-region: ap-southeast-2
+    - name: serverless deploy
+      uses: serverless/github-action@v3.1
+      with:
+        args: deploy --stage dev --verbose
+    - name: Invalidate CloudFront cache
+      run: aws cloudfront create-invalidation --distribution-id ${{ secrets.DEV_PNRAPI_CLOUDFRONT_ID }} --paths "/*"
