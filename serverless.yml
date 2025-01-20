@@ -33,6 +33,22 @@ provider:
     DB_USERNAME: ${env:DB_USERNAME}
     DB_PASSWORD: ${env:DB_PASSWORD}
 
+  # IAM permissions for all Lambda functions
+  iam:
+    role:
+      statements:
+        # Allow CloudWatch metrics creation
+        - Effect: Allow
+          Action:
+            - cloudwatch:PutMetricData
+          Resource: "*"
+        # Allow EventBridge event publishing
+        - Effect: Allow
+          Action:
+            - events:PutEvents
+          Resource: 
+            - !GetAtt DoraEventBus.Arn
+
 functions:
   dealFind:
     handler: src/functions/deal/dealFind.handler
@@ -47,3 +63,109 @@ functions:
       - httpApi:
           path: /deal/save
           method: post
+
+  # DORA metrics processing function
+  doraMetrics:
+    handler: src/functions/dora/metrics.handler
+    events:
+      # Listen to deployment and incident events
+      - eventBridge:
+          eventBus: !GetAtt DoraEventBus.Arn
+          pattern:
+            source:
+              - serverless-app
+            detail-type:
+              - deployment_start
+              - deployment_success
+              - deployment_failure
+              - incident_start
+              - incident_resolve
+
+resources:
+  Resources:
+    # EventBridge bus for DORA events
+    DoraEventBus:
+      Type: AWS::Events::EventBus
+      Properties:
+        Name: ${self:service}-${sls:stage}-dora-bus
+
+    # CloudWatch dashboard for DORA metrics visualization
+# CloudWatch dashboard for DORA metrics visualization
+    DoraDashboard:
+      Type: AWS::CloudWatch::Dashboard
+      Properties:
+        DashboardName: ${self:service}-${sls:stage}-dora-metrics
+        DashboardBody: !Sub |
+          {
+            "widgets": [
+              {
+                "type": "metric",
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "metrics": [
+                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "production", { "stat": "Sum", "period": 86400, "label": "Daily Deployments" } ]
+                  ],
+                  "view": "timeSeries",
+                  "title": "Deployment Frequency",
+                  "period": 86400,
+                  "region": "${self:provider.region}",
+                  "yAxis": {
+                    "left": {
+                      "min": 0
+                    }
+                  },
+                  "annotations": {
+                    "horizontal": []
+                  }
+                }
+              },
+              {
+                "type": "metric",
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "metrics": [
+                    [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "production", { "stat": "Average" } ]
+                  ],
+                  "view": "timeSeries",
+                  "title": "Lead Time for Changes (Minutes)",
+                  "period": 86400,
+                  "region": "${self:provider.region}",
+                  "yAxis": {
+                    "left": {
+                      "min": 0
+                    }
+                  },
+                  "annotations": {
+                    "horizontal": []
+                  }
+                }
+              },
+              {
+                "type": "metric",
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "metrics": [
+                    [ { "expression": "FAILURES / TOTAL * 100", "label": "Change Failure Rate (%)", "id": "e1" } ],
+                    [ "${self:service}/DORA", "DeploymentFailure", "Environment", "production", { "id": "FAILURES", "stat": "Sum", "visible": false } ],
+                    [ ".", "DeploymentFrequency", "Environment", "production", { "id": "TOTAL", "stat": "Sum", "visible": false } ]
+                  ],
+                  "view": "timeSeries",
+                  "title": "Change Failure Rate",
+                  "period": 86400,
+                  "region": "${self:provider.region}",
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "max": 100
+                    }
+                  },
+                  "annotations": {
+                    "horizontal": []
+                  }
+                }
+              }
+            ]
+          }
