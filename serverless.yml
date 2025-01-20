@@ -87,13 +87,13 @@ functions:
           path: /deal/save
           method: post
 
-  # DORA metrics processing function
+# DORA metrics processing function
   doraMetrics:
     handler: src/functions/dora/metrics.handler
     events:
       # Listen to deployment and incident events
       - eventBridge:
-          eventBus: !GetAtt DoraEventBus.Arn
+          eventBus: ${self:service}-${sls:stage}-dora-bus
           pattern:
             source:
               - serverless-app
@@ -106,7 +106,6 @@ functions:
     environment:
       DORA_METRICS_NAMESPACE: "${self:service}/DORA"
       ENVIRONMENT: ${sls:stage}
-    # Add specific function logging configuration
     logRetentionInDays: 14
 resources:
   Resources:
