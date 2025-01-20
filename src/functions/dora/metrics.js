@@ -15,7 +15,6 @@ const METRIC_NAMESPACE = process.env.DORA_METRICS_NAMESPACE;
  * @param {Object} dimensions - Additional dimensions beyond Environment
  */
 const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
-  // Convert dimensions object to CloudWatch format
   const metricDimensions = [
     { Name: "Environment", Value: ENVIRONMENT },
     ...Object.entries(dimensions).map(([name, value]) => ({
@@ -37,7 +36,16 @@ const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
     Namespace: METRIC_NAMESPACE,
   };
 
-  return cloudwatch.putMetricData(params).promise();
+  console.log("Putting metric with params:", JSON.stringify(params, null, 2));
+
+  try {
+    const result = await cloudwatch.putMetricData(params).promise();
+    console.log("Successfully put metric:", result);
+    return result;
+  } catch (error) {
+    console.error("Error putting metric:", error);
+    throw error;
+  }
 };
 
 /**
@@ -110,6 +118,10 @@ const processIncidentResolve = async (event) => {
  */
 exports.handler = async (event) => {
   try {
+    // eslint-disable-next-line no-console
+    console.log("Received event:", JSON.stringify(event, null, 2));
+    console.log("Environment:", ENVIRONMENT);
+    console.log("Metric Namespace:", METRIC_NAMESPACE);
     // Route event to appropriate processor
     switch (event["detail-type"]) {
       case "deployment_start":
