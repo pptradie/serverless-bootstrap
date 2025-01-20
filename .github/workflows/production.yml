@@ -114,22 +114,22 @@ jobs:
 
     - name: Record Deployment Start
       run: |
-        EVENT_DETAIL="{
-          \"deploymentId\":\"${{ github.run_id }}\",
-          \"commitId\":\"${{ github.sha }}\",
-          \"commitTime\":\"${{ steps.get-commit.outputs.commit_time }}\",
-          \"branch\":\"${{ github.ref }}\"
-        }"
+        EVENT_DETAIL=$(jq -n \
+          --arg did "${{ github.run_id }}" \
+          --arg cid "${{ github.sha }}" \
+          --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
+          --arg br "${{ github.ref }}" \
+          '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br}')
         
         echo "Sending deployment start event with details: ${EVENT_DETAIL}"
-        aws events put-events --entries '[{
-          "Source": "serverless-app",
-          "DetailType": "deployment_start",
-          "Detail": "'"${EVENT_DETAIL}"'",
-          "EventBusName": "${{ steps.set-bus.outputs.bus_name }}"
-        }]'
+        aws events put-events --entries "[{
+          \"Source\": \"serverless-app\",
+          \"DetailType\": \"deployment_start\",
+          \"Detail\": ${EVENT_DETAIL},
+          \"EventBusName\": \"${{ steps.set-bus.outputs.bus_name }}\"
+        }]"
 
-    - name: serverless deploy
+    - name: Serverless Deploy
       id: deploy
       uses: serverless/github-action@v3.1
       with:
@@ -144,21 +144,21 @@ jobs:
           EVENT_TYPE="deployment_failure"
         fi
         
-        EVENT_DETAIL="{
-          \"deploymentId\":\"${{ github.run_id }}\",
-          \"commitId\":\"${{ github.sha }}\",
-          \"commitTime\":\"${{ steps.get-commit.outputs.commit_time }}\",
-          \"branch\":\"${{ github.ref }}\",
-          \"status\":\"${STATUS}\"
-        }"
+        EVENT_DETAIL=$(jq -n \
+          --arg did "${{ github.run_id }}" \
+          --arg cid "${{ github.sha }}" \
+          --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
+          --arg br "${{ github.ref }}" \
+          --arg st "${STATUS}" \
+          '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br, status: $st}')
         
         echo "Sending ${EVENT_TYPE} event with details: ${EVENT_DETAIL}"
-        aws events put-events --entries '[{
-          "Source": "serverless-app",
-          "DetailType": "'"${EVENT_TYPE}"'",
-          "Detail": "'"${EVENT_DETAIL}"'",
-          "EventBusName": "${{ steps.set-bus.outputs.bus_name }}"
-        }]'
+        aws events put-events --entries "[{
+          \"Source\": \"serverless-app\",
+          \"DetailType\": \"${EVENT_TYPE}\",
+          \"Detail\": ${EVENT_DETAIL},
+          \"EventBusName\": \"${{ steps.set-bus.outputs.bus_name }}\"
+        }]"
 
     - name: Verify Deployment and Metrics
       if: always()
