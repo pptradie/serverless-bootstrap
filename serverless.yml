@@ -38,38 +38,19 @@ provider:
     DB_NAME: ${env:DB_NAME}
     DB_USERNAME: ${env:DB_USERNAME}
     DB_PASSWORD: ${env:DB_PASSWORD}
+    DORA_METRICS_NAMESPACE: "${self:service}/DORA"
+    ENVIRONMENT: ${sls:stage}
 
-  # IAM permissions for all Lambda functions
-  # iam:
-  #   role:
-  #     statements:
-  #       # Allow CloudWatch metrics creation
-  #       - Effect: Allow
-  #         Action:
-  #           - cloudwatch:PutMetricData
-  #         Resource: "*"
-  #       # Allow EventBridge event publishing
-  #       - Effect: Allow
-  #         Action:
-  #           - events:PutEvents
-  #         Resource: 
-  #           - !GetAtt DoraEventBus.Arn
-
-  # IAM role statements for all functions
   iam:
     role:
       statements:
-        # CloudWatch metrics permissions
         - Effect: Allow
           Action:
             - cloudwatch:PutMetricData
           Resource: "*"
-        # EventBridge permissions
         - Effect: Allow
           Action:
             - events:PutEvents
-            - events:PutRule
-            - events:PutTargets
           Resource: "*"
 
 functions:
@@ -87,11 +68,9 @@ functions:
           path: /deal/save
           method: post
 
-# DORA metrics processing function
   doraMetrics:
     handler: src/functions/dora/metrics.handler
     events:
-      # Listen to deployment and incident events
       - eventBridge:
           eventBus: ${self:service}-${sls:stage}-dora-bus
           pattern:
@@ -103,13 +82,9 @@ functions:
               - deployment_failure
               - incident_start
               - incident_resolve
-    environment:
-      DORA_METRICS_NAMESPACE: "${self:service}/DORA"
-      ENVIRONMENT: ${sls:stage}
-    logRetentionInDays: 14
+
 resources:
   Resources:
-    # EventBridge bus for DORA events
     DoraEventBus:
       Type: AWS::Events::EventBus
       Properties:
@@ -117,38 +92,16 @@ resources:
 
     DoraEventBusPolicy:
       Type: AWS::Events::EventBusPolicy
+      DependsOn: DoraEventBus
       Properties:
         EventBusName: !Ref DoraEventBus
-        StatementId: "AllowPutEvents"
+        StatementId: AllowPutEvents
         Statement:
           Effect: Allow
           Principal: "*"
           Action: events:PutEvents
           Resource: !GetAtt DoraEventBus.Arn
 
-    # EventBridge rule to log all events for debugging
-    DoraEventLoggingRule:
-      Type: AWS::Events::Rule
-      Properties:
-        EventBusName: !Ref DoraEventBus
-        EventPattern:
-          source:
-            - serverless-app
-        State: ENABLED
-        Targets:
-          - Arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/events/${self:service}-${sls:stage}-dora-events:*"
-            Id: "LoggingTarget"
-            RetryPolicy:
-              MaximumRetryAttempts: 1
-
-    # CloudWatch Log Group for EventBridge events
-    DoraEventLogGroup:
-      Type: AWS::Logs::LogGroup
-      Properties:
-        LogGroupName: /aws/events/${self:service}-${sls:stage}-dora-events
-        RetentionInDays: 14
-
-    # CloudWatch dashboard for DORA metrics visualization
     DoraDashboard:
       Type: AWS::CloudWatch::Dashboard
       Properties:
@@ -167,7 +120,7 @@ resources:
                   "view": "timeSeries",
                   "title": "Deployment Frequency",
                   "period": 86400,
-                  "region": "${self:provider.region}",
+                  "region": "${AWS::Region}",
                   "yAxis": {
                     "left": {
                       "min": 0
@@ -189,7 +142,7 @@ resources:
                   "view": "timeSeries",
                   "title": "Lead Time for Changes (Minutes)",
                   "period": 86400,
-                  "region": "${self:provider.region}",
+                  "region": "${AWS::Region}",
                   "yAxis": {
                     "left": {
                       "min": 0
@@ -213,7 +166,7 @@ resources:
                   "view": "timeSeries",
                   "title": "Change Failure Rate",
                   "period": 86400,
-                  "region": "${self:provider.region}",
+                  "region": "${AWS::Region}",
                   "yAxis": {
                     "left": {
                       "min": 0,
