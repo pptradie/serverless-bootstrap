@@ -15,7 +15,7 @@ custom:
 
 provider:
   name: aws
-  # profile: ${self:custom.profiles.${sls:stage}}
+  profile: ${self:custom.profiles.${sls:stage}}
   runtime: nodejs18.x
   region: ap-southeast-2
 
@@ -69,23 +69,23 @@ functions:
           path: /deal/save
           method: post
 
-  doraMetrics:
-    handler: src/functions/dora/metrics.handler
-    events:
-      - eventBridge:
-          eventBus: ${self:custom.doraEventBusName}
-          pattern:
-            source:
-              - serverless-app
-            detail-type:
-              - deployment_start
-              - deployment_success
-              - deployment_failure
-              - incident_start
-              - incident_resolve
-    environment:
-      DORA_METRICS_NAMESPACE: "${self:service}/DORA"
-      ENVIRONMENT: ${sls:stage}
+  # doraMetrics:
+  #   handler: src/functions/dora/metrics.handler
+  #   events:
+  #     - eventBridge:
+  #         eventBus: ${self:custom.doraEventBusName}
+  #         pattern:
+  #           source:
+  #             - serverless-app
+  #           detail-type:
+  #             - deployment_start
+  #             - deployment_success
+  #             - deployment_failure
+  #             - incident_start
+  #             - incident_resolve
+  #   environment:
+  #     DORA_METRICS_NAMESPACE: "${self:service}/DORA"
+  #     ENVIRONMENT: ${sls:stage}
 
 resources:
   Resources:
