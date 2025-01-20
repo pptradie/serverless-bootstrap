@@ -1,10 +1,20 @@
 service: serverless-bootstrap
 
 frameworkVersion: "3"
+
+org: null
+app: null
+
 useDotenv: true
+
+custom:
+  profiles:
+    dev: convergix
+    prod: convergix
 
 provider:
   name: aws
+  # profile: ${self:custom.profiles.${sls:stage}}
   runtime: nodejs18.x
   region: ap-southeast-2
 
