@@ -113,5 +113,3 @@ jobs:
       uses: serverless/github-action@v3.1
       with:
         args: deploy --stage dev --verbose
-    - name: Invalidate CloudFront cache
-      run: aws cloudfront create-invalidation --distribution-id ${{ secrets.DEV_PNRAPI_CLOUDFRONT_ID }} --paths "/*"
