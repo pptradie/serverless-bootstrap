@@ -55,7 +55,7 @@ const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
  * Records the start of a deployment for timing calculations
  */
 const processDeploymentStart = async (event) => {
-  if (ENVIRONMENT === "production") {
+  if (ENVIRONMENT === "prod") {
     await putMetric("DeploymentStart", 1, "Count", {
       DeploymentId: event.detail.deploymentId,
     });
@@ -67,7 +67,7 @@ const processDeploymentStart = async (event) => {
  * Records deployment frequency and calculates lead time
  */
 const processDeploymentSuccess = async (event) => {
-  if (ENVIRONMENT === "production") {
+  if (ENVIRONMENT === "prod") {
     // Increment deployment count
     await putMetric("DeploymentFrequency", 1);
 
@@ -85,17 +85,17 @@ const processDeploymentSuccess = async (event) => {
  * Records failed deployments for change failure rate calculation
  */
 const processDeploymentFailure = async () => {
-  if (ENVIRONMENT === "production") {
+  if (ENVIRONMENT === "prod") {
     await putMetric("DeploymentFailure", 1);
   }
 };
 
 /**
  * Processes incident start events
- * Records when production incidents begin
+ * Records when prod incidents begin
  */
 const processIncidentStart = async (event) => {
-  if (ENVIRONMENT === "production") {
+  if (ENVIRONMENT === "prod") {
     await putMetric("IncidentStart", 1, "Count", {
       IncidentId: event.detail.incidentId,
     });
@@ -107,7 +107,7 @@ const processIncidentStart = async (event) => {
  * Records incident resolution for MTTR calculation
  */
 const processIncidentResolve = async (event) => {
-  if (ENVIRONMENT === "production") {
+  if (ENVIRONMENT === "prod") {
     await putMetric("IncidentResolve", 1, "Count", {
       IncidentId: event.detail.incidentId,
     });
