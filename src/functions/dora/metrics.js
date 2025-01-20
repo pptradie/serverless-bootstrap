@@ -7,6 +7,37 @@ const cloudwatch = new AWS.CloudWatch();
 const ENVIRONMENT = process.env.ENVIRONMENT;
 const METRIC_NAMESPACE = process.env.DORA_METRICS_NAMESPACE;
 
+// List of valid CloudWatch units for reference
+const VALID_UNITS = [
+  "Seconds",
+  "Microseconds",
+  "Milliseconds",
+  "Bytes",
+  "Kilobytes",
+  "Megabytes",
+  "Gigabytes",
+  "Terabytes",
+  "Bits",
+  "Kilobits",
+  "Megabits",
+  "Gigabits",
+  "Terabits",
+  "Percent",
+  "Count",
+  "Bytes/Second",
+  "Kilobytes/Second",
+  "Megabytes/Second",
+  "Gigabytes/Second",
+  "Terabytes/Second",
+  "Bits/Second",
+  "Kilobits/Second",
+  "Megabits/Second",
+  "Gigabits/Second",
+  "Terabits/Second",
+  "Count/Second",
+  "None",
+];
+
 /**
  * Sends a metric to CloudWatch with standard dimensions
  * @param {string} name - Metric name
@@ -17,6 +48,7 @@ const METRIC_NAMESPACE = process.env.DORA_METRICS_NAMESPACE;
 const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
   console.log("putMetric:", name, value, unit, dimensions);
 
+  // Convert dimensions object to CloudWatch format
   const metricDimensions = [
     { Name: "Environment", Value: ENVIRONMENT },
     ...Object.entries(dimensions).map(([name, value]) => ({
@@ -24,6 +56,11 @@ const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
       Value: String(value),
     })),
   ];
+
+  if (!VALID_UNITS.includes(unit)) {
+    console.warn(`Invalid unit "${unit}", defaulting to "Count"`);
+    unit = "Count";
+  }
 
   const params = {
     MetricData: [
@@ -52,10 +89,9 @@ const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
 
 /**
  * Processes deployment start events
- * Records the start of a deployment for timing calculations
  */
 const processDeploymentStart = async (event) => {
-  if (ENVIRONMENT === "prod") {
+  if (ENVIRONMENT === "production") {
     await putMetric("DeploymentStart", 1, "Count", {
       DeploymentId: event.detail.deploymentId,
     });
@@ -64,38 +100,35 @@ const processDeploymentStart = async (event) => {
 
 /**
  * Processes successful deployments
- * Records deployment frequency and calculates lead time
  */
 const processDeploymentSuccess = async (event) => {
-  if (ENVIRONMENT === "prod") {
+  if (ENVIRONMENT === "production") {
     // Increment deployment count
-    await putMetric("DeploymentFrequency", 1);
+    await putMetric("DeploymentFrequency", 1, "Count");
 
     // Calculate and record lead time
     const commitTime = new Date(event.detail.commitTime).getTime();
-    const deployTime = new Date().getTime();
-    const leadTimeMinutes = (deployTime - commitTime) / (1000 * 60);
+    const deployTime = new Date(event.time).getTime();
+    const leadTimeSeconds = (deployTime - commitTime) / 1000; // Convert to seconds
 
-    await putMetric("LeadTimeForChanges", leadTimeMinutes, "Minutes");
+    await putMetric("LeadTimeForChanges", leadTimeSeconds, "Seconds");
   }
 };
 
 /**
  * Processes deployment failures
- * Records failed deployments for change failure rate calculation
  */
 const processDeploymentFailure = async () => {
-  if (ENVIRONMENT === "prod") {
-    await putMetric("DeploymentFailure", 1);
+  if (ENVIRONMENT === "production") {
+    await putMetric("DeploymentFailure", 1, "Count");
   }
 };
 
 /**
  * Processes incident start events
- * Records when prod incidents begin
  */
 const processIncidentStart = async (event) => {
-  if (ENVIRONMENT === "prod") {
+  if (ENVIRONMENT === "production") {
     await putMetric("IncidentStart", 1, "Count", {
       IncidentId: event.detail.incidentId,
     });
@@ -104,10 +137,9 @@ const processIncidentStart = async (event) => {
 
 /**
  * Processes incident resolution events
- * Records incident resolution for MTTR calculation
  */
 const processIncidentResolve = async (event) => {
-  if (ENVIRONMENT === "prod") {
+  if (ENVIRONMENT === "production") {
     await putMetric("IncidentResolve", 1, "Count", {
       IncidentId: event.detail.incidentId,
     });
@@ -116,31 +148,33 @@ const processIncidentResolve = async (event) => {
 
 /**
  * Main Lambda handler
- * Routes events to appropriate processors based on detail-type
  */
 exports.handler = async (event) => {
   try {
-    // eslint-disable-next-line no-console
     console.log("Received event:", JSON.stringify(event, null, 2));
     console.log("Environment:", ENVIRONMENT);
     console.log("Metric Namespace:", METRIC_NAMESPACE);
-    // Route event to appropriate processor
-    console.log("event[detail-type]:", event["detail-type"]);
 
+    // Route event to appropriate processor
     switch (event["detail-type"]) {
       case "deployment_start":
+        console.log("Processing deployment start");
         await processDeploymentStart(event);
         break;
       case "deployment_success":
+        console.log("Processing deployment success");
         await processDeploymentSuccess(event);
         break;
       case "deployment_failure":
+        console.log("Processing deployment failure");
         await processDeploymentFailure();
         break;
       case "incident_start":
+        console.log("Processing incident start");
         await processIncidentStart(event);
         break;
       case "incident_resolve":
+        console.log("Processing incident resolve");
         await processIncidentResolve(event);
         break;
     }
@@ -150,7 +184,6 @@ exports.handler = async (event) => {
       body: JSON.stringify({ message: "Metrics processed successfully" }),
     };
   } catch (error) {
-    // Using console.error is allowed per ESLint config
     console.error("Error processing metrics:", error);
     throw error;
   }
