@@ -68,7 +68,7 @@ jobs:
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
       SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
 
-deploy:
+  deploy:
     name: Deploy
     needs: [lint, test, code-analysis]
     runs-on: ubuntu-latest
