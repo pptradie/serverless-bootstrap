@@ -12,8 +12,6 @@ custom:
     dev: convergix
     prod: convergix
 
-useDotenv: true
-
 provider:
   name: aws
   profile: ${self:custom.profiles.${sls:stage}}
