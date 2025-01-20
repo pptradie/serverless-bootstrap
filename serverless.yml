@@ -11,6 +11,7 @@ custom:
   profiles:
     dev: convergix
     prod: convergix
+  doraEventBusName: ${self:service}-${sls:stage}-dora-bus-${aws:accountId}
 
 provider:
   name: aws
@@ -72,7 +73,7 @@ functions:
     handler: src/functions/dora/metrics.handler
     events:
       - eventBridge:
-          eventBus: ${self:service}-${sls:stage}-dora-event-bus
+          eventBus: ${self:custom.doraEventBusName}
           pattern:
             source:
               - serverless-app
@@ -82,13 +83,16 @@ functions:
               - deployment_failure
               - incident_start
               - incident_resolve
+    environment:
+      DORA_METRICS_NAMESPACE: "${self:service}/DORA"
+      ENVIRONMENT: ${sls:stage}
 
 resources:
   Resources:
     DoraEventBus:
       Type: AWS::Events::EventBus
       Properties:
-        Name: ${self:service}-${sls:stage}-dora-event-bus
+        Name: ${self:custom.doraEventBusName}
 
     DoraEventBusPolicy:
       Type: AWS::Events::EventBusPolicy

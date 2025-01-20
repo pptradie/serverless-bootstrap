@@ -24,6 +24,7 @@ jobs:
       - name: Run ESLint
         run: npm run lint
         continue-on-error: false
+
   test:
     name: Test and Coverage
     runs-on: ubuntu-latest
@@ -34,7 +35,7 @@ jobs:
       - name: Use Node.js 18.x
         uses: actions/setup-node@v3
         with:
-          node-version: "18.17.1" # AWS Lambda uses Node.js 18.x
+          node-version: "18.17.1"
           cache: "npm"
 
       - name: Install dependencies
@@ -43,20 +44,19 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
 
-      # Verify coverage directory exists and show its contents
       - name: Debug coverage directory
         run: |
           ls -la
           ls -la coverage || echo "Coverage directory not found"
 
-      # Upload coverage results with error handling
       - name: Upload coverage results
         uses: actions/upload-artifact@v3
-        if: always() # Try to upload even if tests fail
+        if: always()
         with:
           name: coverage-report
-          path: coverage/lcov.info # Specify exact file
-          if-no-files-found: error # Will fail if files not found
+          path: coverage/lcov.info
+          if-no-files-found: error
+
   code-analysis:
     name: Code Analysis & Security
     needs: test
@@ -104,25 +104,30 @@ jobs:
         role-to-assume: ${{ secrets.PROD_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
         aws-region: ap-southeast-2
 
-    # Add debug step to check AWS configuration
-    - name: Debug AWS Configuration
+    - name: Set EventBus Name
+      id: set-bus
       run: |
-        aws sts get-caller-identity
-        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-event-bus"
-        echo "Checking EventBus: $EVENT_BUS_NAME"
-        aws events describe-event-bus --name $EVENT_BUS_NAME || echo "EventBus not found"
+        AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-bus-${AWS_ACCOUNT_ID}"
+        echo "bus_name=${EVENT_BUS_NAME}" >> $GITHUB_OUTPUT
+        echo "Using EventBus: ${EVENT_BUS_NAME}"
 
     - name: Record Deployment Start
       run: |
-        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-event-bus"
-        echo "Sending deployment start event to $EVENT_BUS_NAME"
+        EVENT_DETAIL="{
+          \"deploymentId\":\"${{ github.run_id }}\",
+          \"commitId\":\"${{ github.sha }}\",
+          \"commitTime\":\"${{ steps.get-commit.outputs.commit_time }}\",
+          \"branch\":\"${{ github.ref }}\"
+        }"
         
+        echo "Sending deployment start event with details: ${EVENT_DETAIL}"
         aws events put-events --entries '[{
           "Source": "serverless-app",
           "DetailType": "deployment_start",
-          "Detail": "{\"deploymentId\":\"${{ github.run_id }}\",\"commitId\":\"${{ github.sha }}\",\"commitTime\":\"${{ steps.get-commit.outputs.commit_time }}\",\"branch\":\"${{ github.ref }}\"}",
-          "EventBusName": "'$EVENT_BUS_NAME'"
-        }]' || echo "Failed to send event"
+          "Detail": "'"${EVENT_DETAIL}"'",
+          "EventBusName": "${{ steps.set-bus.outputs.bus_name }}"
+        }]'
 
     - name: serverless deploy
       id: deploy
@@ -133,32 +138,46 @@ jobs:
     - name: Record Deployment Result
       if: always()
       run: |
-        EVENT_BUS_NAME="serverless-bootstrap-prod-dora-event-bus"
         STATUS="${{ steps.deploy.outcome }}"
         EVENT_TYPE="deployment_success"
         if [ "$STATUS" != "success" ]; then
           EVENT_TYPE="deployment_failure"
         fi
         
-        echo "Sending $EVENT_TYPE event to $EVENT_BUS_NAME"
+        EVENT_DETAIL="{
+          \"deploymentId\":\"${{ github.run_id }}\",
+          \"commitId\":\"${{ github.sha }}\",
+          \"commitTime\":\"${{ steps.get-commit.outputs.commit_time }}\",
+          \"branch\":\"${{ github.ref }}\",
+          \"status\":\"${STATUS}\"
+        }"
+        
+        echo "Sending ${EVENT_TYPE} event with details: ${EVENT_DETAIL}"
         aws events put-events --entries '[{
           "Source": "serverless-app",
-          "DetailType": "'$EVENT_TYPE'",
-          "Detail": "{\"deploymentId\":\"${{ github.run_id }}\",\"commitId\":\"${{ github.sha }}\",\"commitTime\":\"${{ steps.get-commit.outputs.commit_time }}\",\"branch\":\"${{ github.ref }}\",\"status\":\"'$STATUS'\"}",
-          "EventBusName": "'$EVENT_BUS_NAME'"
-        }]' || echo "Failed to send event"
+          "DetailType": "'"${EVENT_TYPE}"'",
+          "Detail": "'"${EVENT_DETAIL}"'",
+          "EventBusName": "${{ steps.set-bus.outputs.bus_name }}"
+        }]'
 
-    # Add verification steps
-    - name: Verify EventBridge and Lambda
+    - name: Verify Deployment and Metrics
       if: always()
       run: |
-        echo "Checking recent EventBridge events..."
-        aws events list-rules --event-bus-name serverless-bootstrap-prod-dora-event-bus
+        echo "1. Verifying EventBus..."
+        aws events describe-event-bus --name "${{ steps.set-bus.outputs.bus_name }}"
         
-        echo "Checking Lambda logs..."
+        echo "2. Checking EventBus Rules..."
+        aws events list-rules --event-bus-name "${{ steps.set-bus.outputs.bus_name }}"
+        
+        echo "3. Checking Lambda Function..."
+        aws lambda get-function --function-name serverless-bootstrap-prod-doraMetrics || echo "Lambda function not found"
+        
+        echo "4. Checking Recent Lambda Logs..."
         LOG_GROUP="/aws/lambda/serverless-bootstrap-prod-doraMetrics"
-        aws logs describe-log-streams \
-          --log-group-name "$LOG_GROUP" \
-          --order-by LastEventTime \
-          --descending \
-          --limit 1 || echo "No log streams found"
+        echo "Checking logs in: ${LOG_GROUP}"
+        aws logs tail "${LOG_GROUP}" --since 5m || echo "No recent logs found"
+        
+        echo "5. Checking CloudWatch Metrics..."
+        aws cloudwatch list-metrics \
+          --namespace "serverless-bootstrap/DORA" \
+          --dimensions Name=Environment,Value=production || echo "No metrics found"
