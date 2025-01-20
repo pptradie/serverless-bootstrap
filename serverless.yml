@@ -34,20 +34,37 @@ provider:
     DB_PASSWORD: ${env:DB_PASSWORD}
 
   # IAM permissions for all Lambda functions
+  # iam:
+  #   role:
+  #     statements:
+  #       # Allow CloudWatch metrics creation
+  #       - Effect: Allow
+  #         Action:
+  #           - cloudwatch:PutMetricData
+  #         Resource: "*"
+  #       # Allow EventBridge event publishing
+  #       - Effect: Allow
+  #         Action:
+  #           - events:PutEvents
+  #         Resource: 
+  #           - !GetAtt DoraEventBus.Arn
+
+  # IAM role statements for all functions
   iam:
     role:
       statements:
-        # Allow CloudWatch metrics creation
+        # CloudWatch metrics permissions
         - Effect: Allow
           Action:
             - cloudwatch:PutMetricData
           Resource: "*"
-        # Allow EventBridge event publishing
+        # EventBridge permissions
         - Effect: Allow
           Action:
             - events:PutEvents
-          Resource: 
-            - !GetAtt DoraEventBus.Arn
+            - events:PutRule
+            - events:PutTargets
+          Resource: "*"
 
 functions:
   dealFind:
@@ -80,7 +97,8 @@ functions:
               - deployment_failure
               - incident_start
               - incident_resolve
-
+    # Add specific function logging configuration
+    logRetentionInDays: 14
 resources:
   Resources:
     # EventBridge bus for DORA events
@@ -88,6 +106,26 @@ resources:
       Type: AWS::Events::EventBus
       Properties:
         Name: ${self:service}-${sls:stage}-dora-bus
+
+    # EventBridge rule to log all events for debugging
+    DoraEventLoggingRule:
+      Type: AWS::Events::Rule
+      Properties:
+        EventBusName: !Ref DoraEventBus
+        EventPattern:
+          source:
+            - serverless-app
+        State: ENABLED
+        Targets:
+          - Arn: !GetAtt DoraEventLogGroup.Arn
+            Id: "LoggingTarget"
+
+    # CloudWatch Log Group for EventBridge events
+    DoraEventLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/events/${self:service}-${sls:stage}-dora-events
+        RetentionInDays: 14
 
     # CloudWatch dashboard for DORA metrics visualization
 # CloudWatch dashboard for DORA metrics visualization
