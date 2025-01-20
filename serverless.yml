@@ -90,6 +90,7 @@ resources:
         Name: ${self:service}-${sls:stage}-dora-bus
 
     # CloudWatch dashboard for DORA metrics visualization
+# CloudWatch dashboard for DORA metrics visualization
     DoraDashboard:
       Type: AWS::CloudWatch::Dashboard
       Properties:
@@ -99,6 +100,8 @@ resources:
             "widgets": [
               {
                 "type": "metric",
+                "width": 12,
+                "height": 6,
                 "properties": {
                   "metrics": [
                     [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "production", { "stat": "Sum", "period": 86400, "label": "Daily Deployments" } ]
@@ -106,31 +109,62 @@ resources:
                   "view": "timeSeries",
                   "title": "Deployment Frequency",
                   "period": 86400,
-                  "region": "${self:provider.region}"
+                  "region": "${self:provider.region}",
+                  "yAxis": {
+                    "left": {
+                      "min": 0
+                    }
+                  },
+                  "annotations": {
+                    "horizontal": []
+                  }
                 }
               },
               {
                 "type": "metric",
+                "width": 12,
+                "height": 6,
                 "properties": {
                   "metrics": [
                     [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "production", { "stat": "Average" } ]
                   ],
                   "view": "timeSeries",
                   "title": "Lead Time for Changes (Minutes)",
-                  "period": 86400
+                  "period": 86400,
+                  "region": "${self:provider.region}",
+                  "yAxis": {
+                    "left": {
+                      "min": 0
+                    }
+                  },
+                  "annotations": {
+                    "horizontal": []
+                  }
                 }
               },
               {
                 "type": "metric",
+                "width": 12,
+                "height": 6,
                 "properties": {
                   "metrics": [
-                    [ { "expression": "FAILURES / TOTAL * 100", "label": "Change Failure Rate (%)" } ],
+                    [ { "expression": "FAILURES / TOTAL * 100", "label": "Change Failure Rate (%)", "id": "e1" } ],
                     [ "${self:service}/DORA", "DeploymentFailure", "Environment", "production", { "id": "FAILURES", "stat": "Sum", "visible": false } ],
                     [ ".", "DeploymentFrequency", "Environment", "production", { "id": "TOTAL", "stat": "Sum", "visible": false } ]
                   ],
                   "view": "timeSeries",
                   "title": "Change Failure Rate",
-                  "period": 86400
+                  "period": 86400,
+                  "region": "${self:provider.region}",
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "max": 100
+                    }
+                  },
+                  "annotations": {
+                    "horizontal": []
+                  }
                 }
               }
             ]
