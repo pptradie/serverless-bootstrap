@@ -110,18 +110,7 @@ resources:
       Properties:
         Name: ${self:service}-${sls:stage}-dora-bus
 
-    DoraEventBusPolicy:
-      Type: AWS::Events::EventBusPolicy
-      Properties:
-        EventBusName: !Ref DoraEventBus
-        StatementId: "AllowPutEvents"
-        Statement:
-          Effect: Allow
-          Principal: "*"
-          Action: events:PutEvents
-          Resource: !GetAtt DoraEventBus.Arn
-
-    # EventBridge rule to log all events for debugging
+    # Updated EventBridge rule to log all events for debugging
     DoraEventLoggingRule:
       Type: AWS::Events::Rule
       Properties:
@@ -131,20 +120,40 @@ resources:
             - serverless-app
         State: ENABLED
         Targets:
-          - Arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/events/${self:service}-${sls:stage}-dora-events:*"
-            Id: "LoggingTarget"
+          - Arn: !GetAtt DoraMetricsFunction.Arn
+            Id: "DoraMetricsTarget"
             RetryPolicy:
               MaximumRetryAttempts: 1
 
-    # CloudWatch Log Group for EventBridge events
-    DoraEventLogGroup:
+    # Reference to the Lambda function
+    DoraMetricsFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        FunctionName: ${self:service}-${sls:stage}-doraMetrics
+        Handler: src/functions/dora/metrics.handler
+        Role: !GetAtt IamRoleLambdaExecution.Arn
+        Environment:
+          Variables:
+            DORA_METRICS_NAMESPACE: "${self:service}/DORA"
+            ENVIRONMENT: ${sls:stage}
+
+    # Lambda permission to allow EventBridge invocation
+    DoraMetricsPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: lambda:InvokeFunction
+        FunctionName: !GetAtt DoraMetricsFunction.Arn
+        Principal: events.amazonaws.com
+        SourceArn: !GetAtt DoraEventLoggingRule.Arn
+
+    # CloudWatch Log Group for Lambda logs
+    DoraMetricsLogGroup:
       Type: AWS::Logs::LogGroup
       Properties:
-        LogGroupName: /aws/events/${self:service}-${sls:stage}-dora-events
+        LogGroupName: /aws/lambda/${self:service}-${sls:stage}-doraMetrics
         RetentionInDays: 14
 
     # CloudWatch dashboard for DORA metrics visualization
-# CloudWatch dashboard for DORA metrics visualization
     DoraDashboard:
       Type: AWS::CloudWatch::Dashboard
       Properties:
