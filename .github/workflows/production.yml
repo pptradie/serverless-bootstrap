@@ -112,9 +112,9 @@ jobs:
         echo "bus_name=${EVENT_BUS_NAME}" >> $GITHUB_OUTPUT
         echo "Using EventBus: ${EVENT_BUS_NAME}"
 
-    - name: Record Deployment Start
+  - name: Record Deployment Start
       run: |
-        EVENT_DETAIL=$(jq -n \
+        EVENT_DETAIL=$(jq -c -n \
           --arg did "${{ github.run_id }}" \
           --arg cid "${{ github.sha }}" \
           --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
@@ -125,11 +125,11 @@ jobs:
         aws events put-events --entries "[{
           \"Source\": \"serverless-app\",
           \"DetailType\": \"deployment_start\",
-          \"Detail\": ${EVENT_DETAIL},
+          \"Detail\": \"${EVENT_DETAIL}\",
           \"EventBusName\": \"${{ steps.set-bus.outputs.bus_name }}\"
         }]"
 
-    - name: Serverless Deploy
+    - name: serverless deploy
       id: deploy
       uses: serverless/github-action@v3.1
       with:
@@ -144,7 +144,7 @@ jobs:
           EVENT_TYPE="deployment_failure"
         fi
         
-        EVENT_DETAIL=$(jq -n \
+        EVENT_DETAIL=$(jq -c -n \
           --arg did "${{ github.run_id }}" \
           --arg cid "${{ github.sha }}" \
           --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
@@ -156,7 +156,7 @@ jobs:
         aws events put-events --entries "[{
           \"Source\": \"serverless-app\",
           \"DetailType\": \"${EVENT_TYPE}\",
-          \"Detail\": ${EVENT_DETAIL},
+          \"Detail\": \"${EVENT_DETAIL}\",
           \"EventBusName\": \"${{ steps.set-bus.outputs.bus_name }}\"
         }]"
 
