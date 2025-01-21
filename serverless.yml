@@ -119,44 +119,23 @@ DoraDashboard:
             "width": 12,
             "height": 6,
             "properties": {
-              "metrics": [
-                [ 
-                  {
-                    "expression": "FILL(METRICS(), 0)",
-                    "label": "Number of Deployments",
-                    "id": "deployments"
-                  }
-                ],
-                [ 
-                  "${self:service}/DORA",
-                  "DeploymentFrequency",
-                  "Environment",
-                  "prod",
-                  {
-                    "stat": "Sum",
-                    "period": 60,
-                    "visible": false,
-                    "id": "rawDeployments"
-                  }
-                ]
-              ],
               "view": "timeSeries",
-              "stacked": false,
+              "metrics": [
+                [ "serverless-bootstrap/DORA", "DeploymentFrequency", "Environment", "prod", { 
+                  "stat": "Sum",
+                  "period": 60,
+                  "label": "Deployments"
+                }]
+              ],
               "region": "${AWS::Region}",
               "title": "Deployment Frequency",
-              "period": 60,
               "yAxis": {
                 "left": {
                   "min": 0,
-                  "showUnits": false
+                  "label": "Count"
                 }
               },
-              "legend": {
-                "position": "bottom"
-              },
-              "liveData": true,
-              "setPeriodToTimeRange": true,
-              "defaultPeriod": false
+              "defaultTimeRange": "-PT12H"
             }
           },
           {
@@ -164,44 +143,49 @@ DoraDashboard:
             "width": 12,
             "height": 6,
             "properties": {
-              "metrics": [
-                [ 
-                  "${self:service}/DORA",
-                  "LeadTimeForChanges",
-                  "Environment",
-                  "prod",
-                  {
-                    "stat": "Average",
-                    "period": 60,
-                    "label": "Lead Time (Seconds)"
-                  }
-                ],
-                [
-                  {
-                    "expression": "m1/60",
-                    "label": "Lead Time (Minutes)",
-                    "id": "e1"
-                  }
-                ]
-              ],
               "view": "timeSeries",
-              "stacked": false,
+              "metrics": [
+                [ "serverless-bootstrap/DORA", "LeadTimeForChanges", "Environment", "prod", { 
+                  "stat": "Average",
+                  "period": 60,
+                  "label": "Lead Time"
+                }]
+              ],
               "region": "${AWS::Region}",
               "title": "Lead Time for Changes",
-              "period": 60,
               "yAxis": {
                 "left": {
                   "min": 0,
-                  "showUnits": false
+                  "label": "Seconds"
                 }
               },
-              "legend": {
-                "position": "bottom"
-              },
-              "liveData": true,
-              "setPeriodToTimeRange": true,
-              "defaultPeriod": false
+              "defaultTimeRange": "-PT12H"
+            }
+          },
+          {
+            "type": "metric",
+            "width": 24,
+            "height": 3,
+            "properties": {
+              "metrics": [
+                [ "serverless-bootstrap/DORA", "DeploymentFrequency", "Environment", "prod", { 
+                  "stat": "Sum",
+                  "period": 3600,
+                  "label": "Deployments (last hour)"
+                }],
+                [ "serverless-bootstrap/DORA", "LeadTimeForChanges", "Environment", "prod", { 
+                  "stat": "Average",
+                  "period": 3600,
+                  "label": "Avg Lead Time (seconds)"
+                }]
+              ],
+              "view": "singleValue",
+              "region": "${AWS::Region}",
+              "title": "Last Hour Summary",
+              "setPeriodToTimeRange": false,
+              "singleValueFullPrecision": false
             }
           }
-        ]
+        ],
+        "periodOverride": "inherit"
       }
