@@ -3,20 +3,16 @@
 const AWS = require("aws-sdk");
 const cloudwatch = new AWS.CloudWatch();
 
-// Environment constants
 const ENVIRONMENT = process.env.ENVIRONMENT;
 const METRIC_NAMESPACE = process.env.DORA_METRICS_NAMESPACE;
 
 const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
-  console.log("==== METRIC DEBUG START ====");
-  console.log("Current Environment:", ENVIRONMENT);
-  console.log("Metric Namespace:", METRIC_NAMESPACE);
-  console.log("Metric Name:", name);
-  console.log("Metric Value:", value);
-  console.log("Metric Unit:", unit);
-  console.log("Current Time:", new Date().toISOString());
+  const timestamp = new Date();
+  console.log(`Putting metric ${name} at timestamp ${timestamp.toISOString()}`);
 
-  // Convert dimensions object to CloudWatch format
+  // Ensure timestamp is rounded to nearest minute
+  timestamp.setSeconds(0, 0);
+
   const metricDimensions = [
     { Name: "Environment", Value: ENVIRONMENT },
     ...Object.entries(dimensions).map(([name, value]) => ({
@@ -25,119 +21,100 @@ const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
     })),
   ];
 
-  console.log("Metric Dimensions:", JSON.stringify(metricDimensions, null, 2));
-
   const params = {
     MetricData: [
       {
         MetricName: name,
         Value: value,
         Unit: unit,
-        Timestamp: new Date(),
+        Timestamp: timestamp,
         Dimensions: metricDimensions,
+        StorageResolution: 60, // Standard resolution (1 minute)
       },
     ],
     Namespace: METRIC_NAMESPACE,
   };
 
-  console.log("Full CloudWatch Params:", JSON.stringify(params, null, 2));
+  console.log("CloudWatch Parameters:", JSON.stringify(params, null, 2));
 
   try {
-    const result = await cloudwatch.putMetricData(params).promise();
-    console.log("CloudWatch API Response:", JSON.stringify(result, null, 2));
+    await cloudwatch.putMetricData(params).promise();
+    console.log(`Successfully put metric ${name}`);
 
-    // Verify the metric was stored
+    // Wait briefly before verification
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Verify metric was stored
     const verifyParams = {
       Namespace: METRIC_NAMESPACE,
       MetricName: name,
       Dimensions: metricDimensions,
-      StartTime: new Date(Date.now() - 5 * 60 * 1000), // Last 5 minutes
-      EndTime: new Date(),
+      StartTime: new Date(timestamp.getTime() - 5 * 60 * 1000),
+      EndTime: new Date(timestamp.getTime() + 5 * 60 * 1000),
       Period: 60,
-      Statistics: ["Sum", "Average", "Minimum", "Maximum"],
+      Statistics: ["Sum", "Average"],
     };
 
+    const verifyResult = await cloudwatch
+      .getMetricStatistics(verifyParams)
+      .promise();
     console.log(
-      "Verification Query Params:",
-      JSON.stringify(verifyParams, null, 2)
+      `Verification result for ${name}:`,
+      JSON.stringify(verifyResult, null, 2)
     );
 
-    try {
-      const verifyResult = await cloudwatch
-        .getMetricStatistics(verifyParams)
-        .promise();
-      console.log(
-        "Verification Result:",
-        JSON.stringify(verifyResult, null, 2)
-      );
-      if (verifyResult.Datapoints.length === 0) {
-        console.warn("No datapoints found in verification!");
-      }
-    } catch (verifyError) {
-      console.error("Verification failed:", verifyError);
-    }
-
-    console.log("==== METRIC DEBUG END ====");
-    return result;
+    return true;
   } catch (error) {
-    console.error("Error putting metric:", JSON.stringify(error, null, 2));
+    console.error(`Error putting metric ${name}:`, error);
     throw error;
   }
 };
 
 const processDeploymentSuccess = async (event) => {
-  console.log(
-    "Processing deployment success event:",
-    JSON.stringify(event, null, 2)
-  );
+  if (ENVIRONMENT === "prod") {
+    try {
+      // Record deployment frequency
+      await putMetric("DeploymentFrequency", 1, "Count");
 
-  if (ENVIRONMENT === "prod" || ENVIRONMENT === "production") {
-    console.log(`Environment matches (${ENVIRONMENT}), processing metrics...`);
+      // Calculate lead time
+      const commitTime = new Date(event.detail.commitTime);
+      const deployTime = new Date(event.time);
+      const leadTimeSeconds = Math.round((deployTime - commitTime) / 1000);
 
-    // Increment deployment count
-    await putMetric("DeploymentFrequency", 1, "Count");
+      console.log("Lead time calculation:", {
+        commitTime: commitTime.toISOString(),
+        deployTime: deployTime.toISOString(),
+        leadTimeSeconds,
+      });
 
-    // Calculate and record lead time
-    const commitTime = new Date(event.detail.commitTime).getTime();
-    const deployTime = new Date(event.time).getTime();
-    const leadTimeSeconds = (deployTime - commitTime) / 1000;
-
-    console.log("Lead time calculation:", {
-      commitTime: event.detail.commitTime,
-      deployTime: event.time,
-      leadTimeSeconds,
-    });
-
-    await putMetric("LeadTimeForChanges", leadTimeSeconds, "Seconds");
+      await putMetric("LeadTimeForChanges", leadTimeSeconds, "Seconds");
+    } catch (error) {
+      console.error("Error processing deployment success:", error);
+      throw error;
+    }
   } else {
-    console.log(
-      `Environment (${ENVIRONMENT}) is not production, skipping metrics`
-    );
+    console.log(`Skipping metrics for environment: ${ENVIRONMENT}`);
   }
 };
 
-// Rest of your Lambda function code...
-
 exports.handler = async (event) => {
   try {
-    console.log("==== LAMBDA EXECUTION START ====");
     console.log("Received event:", JSON.stringify(event, null, 2));
-    console.log("Environment variables:", {
-      ENVIRONMENT,
-      METRIC_NAMESPACE,
-    });
 
     switch (event["detail-type"]) {
       case "deployment_success":
         await processDeploymentSuccess(event);
         break;
-      // ... other cases
+      default:
+        console.log(`Unhandled detail-type: ${event["detail-type"]}`);
     }
 
-    console.log("==== LAMBDA EXECUTION END ====");
-    return { statusCode: 200, body: "Success" };
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "Successfully processed metrics" }),
+    };
   } catch (error) {
-    console.error("Lambda execution error:", error);
+    console.error("Error in handler:", error);
     throw error;
   }
 };
