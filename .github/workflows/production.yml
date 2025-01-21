@@ -164,24 +164,29 @@ jobs:
           echo "Sending ${EVENT_TYPE} event..."
           aws events put-events --entries "[$ENTRY]"
 
-      - name: Verify Deployment and Metrics
+      - name: Verify CloudWatch Metrics
         if: always()
         run: |
-          echo "1. Verifying EventBus..."
-          aws events describe-event-bus --name "${{ steps.set-bus.outputs.bus_name }}"
-
-          echo "2. Checking EventBus Rules..."
-          aws events list-rules --event-bus-name "${{ steps.set-bus.outputs.bus_name }}"
-
-          echo "3. Checking Lambda Function..."
-          aws lambda get-function --function-name serverless-bootstrap-prod-doraMetrics || echo "Lambda function not found"
-
-          echo "4. Checking Recent Lambda Logs..."
-          LOG_GROUP="/aws/lambda/serverless-bootstrap-prod-doraMetrics"
-          echo "Checking logs in: ${LOG_GROUP}"
-          aws logs tail "${LOG_GROUP}" --since 5m || echo "No recent logs found"
-
-          echo "5. Checking CloudWatch Metrics..."
-          aws cloudwatch list-metrics \
+          echo "Checking metrics for the last hour..."
+          START_TIME=$(date -u -v-1H +"%Y-%m-%dT%H:%M:%S")
+          END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S")
+          
+          echo "Checking DeploymentFrequency..."
+          aws cloudwatch get-metric-statistics \
             --namespace "serverless-bootstrap/DORA" \
-            --dimensions Name=Environment,Value=production || echo "No metrics found"
+            --metric-name "DeploymentFrequency" \
+            --dimensions Name=Environment,Value=prod \
+            --start-time "2025-01-21T03:00:00" \
+            --end-time "2025-01-21T04:00:00" \
+            --period 60 \
+            --statistics Sum
+            
+          echo "Checking LeadTimeForChanges..."
+          aws cloudwatch get-metric-statistics \
+            --namespace "serverless-bootstrap/DORA" \
+            --metric-name "LeadTimeForChanges" \
+            --dimensions Name=Environment,Value=prod \
+            --start-time "2025-01-21T03:00:00" \
+            --end-time "2025-01-21T04:00:00" \
+            --period 60 \
+            --statistics Average
