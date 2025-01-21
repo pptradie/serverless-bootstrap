@@ -11,7 +11,8 @@ custom:
   profiles:
     dev: convergix
     prod: convergix
-  doraEventBusName: ${self:service}-${sls:stage}-dora-bus-${aws:accountId}
+  # doraEventBusName: ${self:service}-${sls:stage}-dora-bus-${aws:accountId}
+  doraEventBusName: event-bus-serverless-bootstrap-dora-metrics
 
 provider:
   name: aws
@@ -69,97 +70,109 @@ functions:
           path: /deal/save
           method: post
 
-  doraMetrics:
-    handler: src/functions/dora/metrics.handler
+  deploymentFrequency:
+    handler: src/dora/deploymentFrequency.handler
     events:
       - eventBridge:
           eventBus: ${self:custom.doraEventBusName}
           pattern:
-            source:
-              - serverless-app
             detail-type:
-              - deployment_start
-              - deployment_success
-              - deployment_failure
-              - incident_start
-              - incident_resolve
-    environment:
-      DORA_METRICS_NAMESPACE: "${self:service}/DORA"
-      ENVIRONMENT: ${sls:stage}
+              - DeploymentSuccess
+
+  leadTimeForChanges:
+    handler: src/dora/leadTimeForChanges.handler
+    events:
+      - eventBridge:
+          eventBus: ${self:custom.doraEventBusName}
+          pattern:
+            detail-type:
+              - DeploymentSuccess
+
+  changeFailureRate:
+    handler: src/dora/changeFailureRate.handler
+    events:
+      - eventBridge:
+          eventBus: ${self:custom.doraEventBusName}
+          pattern:
+            detail-type:
+              - DeploymentFailure
+
+  mttr:
+    handler: src/dora/mttr.handler
+    events:
+      - eventBridge:
+          eventBus: ${self:custom.doraEventBusName}
+          pattern:
+            detail-type:
+              - IncidentResolved
 
 resources:
   Resources:
-    # DoraEventBus:
-    #   Type: AWS::Events::EventBus
-    #   Properties:
-    #     Name: ${self:custom.doraEventBusName}
+    DoraEventBus:
+      Type: AWS::Events::EventBus
+      Properties:
+        Name: ${self:custom.doraEventBusName}
 
-    # DoraEventBusPolicy:
-    #   Type: AWS::Events::EventBusPolicy
-    #   DependsOn: DoraEventBus
-    #   Properties:
-    #     EventBusName: !Ref DoraEventBus
-    #     StatementId: AllowPutEvents
-    #     Statement:
-    #       Effect: Allow
-    #       Principal: "*"
-    #       Action: events:PutEvents
-    #       Resource: !GetAtt DoraEventBus.Arn
-{
-            "type": "metric",
-            "width": 12,
-            "height": 6,
-            "properties": {
-              "view": "timeSeries",
-              "stacked": false,
-              "metrics": [
-                [ { 
-                  "expression": "(m2 / m1) * 100", 
-                  "label": "Failure Rate (%)",
-                  "id": "e1"
-                } ],
-                [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { 
-                  "id": "m1",
-                  "visible": false
-                } ],
-                [ ".", "DeploymentFailures", "Environment", "prod", { 
-                  "id": "m2",
-                  "visible": false
-                } ]
-              ],
-              "region": "${AWS::Region}",
-              "title": "Change Failure Rate",
-              "period": 60,
-              "yAxis": {
-                "left": {
-                  "showUnits": false,
-                  "min": 0,
-                  "max": 100
-                }
-              }
-            }
-          },
+    DORAMetricsDashboard:
+      Type: AWS::CloudWatch::Dashboard
+      Properties:
+        DashboardName: DORA_Metrics
+        DashboardBody: |
           {
-            "type": "metric",
-            "width": 12,
-            "height": 6,
-            "properties": {
-              "view": "timeSeries",
-              "stacked": false,
-              "metrics": [
-                [ "${self:service}/DORA", "MTTR", "Environment", "prod", {
-                  "label": "Recovery Time",
-                  "stat": "Average"
-                } ]
-              ],
-              "region": "${AWS::Region}",
-              "title": "Mean Time to Recovery (Minutes)",
-              "period": 60,
-              "yAxis": {
-                "left": {
-                  "showUnits": false,
-                  "min": 0
+            "widgets": [
+              {
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 1,
+                "properties": {
+                  "markdown": "### Dashboard for DORA Metrics"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 1,
+                "width": 6,
+                "height": 6,
+                "properties": {
+                  "metrics": [["Custom/DORA", "DeploymentFrequency"]],
+                  "view": "singleValue"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 6,
+                "y": 1,
+                "width": 6,
+                "height": 6,
+                "properties": {
+                  "metrics": [["Custom/DORA", "LeadTimeForChanges"]],
+                  "view": "singleValue"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 1,
+                "width": 6,
+                "height": 6,
+                "properties": {
+                  "metrics": [["Custom/DORA", "ChangeFailureRate"]],
+                  "view": "singleValue"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 18,
+                "y": 1,
+                "width": 6,
+                "height": 6,
+                "properties": {
+                  "metrics": [["Custom/DORA", "MTTR"]],
+                  "view": "singleValue"
                 }
               }
-            }
+            ]
           }

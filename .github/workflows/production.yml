@@ -104,89 +104,19 @@ jobs:
           role-to-assume: ${{ secrets.PROD_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
           aws-region: ap-southeast-2
 
-      - name: Set EventBus Name
-        id: set-bus
-        run: |
-          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          EVENT_BUS_NAME="serverless-bootstrap-prod-dora-bus-${AWS_ACCOUNT_ID}"
-          echo "bus_name=${EVENT_BUS_NAME}" >> $GITHUB_OUTPUT
-          echo "Using EventBus: ${EVENT_BUS_NAME}"
-
-      - name: Record Deployment Start
-        run: |
-          EVENT_DETAIL=$(jq -c -n \
-            --arg did "${{ github.run_id }}" \
-            --arg cid "${{ github.sha }}" \
-            --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
-            --arg br "${{ github.ref }}" \
-            '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br}')
-
-          ENTRY=$(jq -n \
-            --arg src "serverless-app" \
-            --arg type "deployment_start" \
-            --arg detail "$EVENT_DETAIL" \
-            --arg bus "${{ steps.set-bus.outputs.bus_name }}" \
-            '{Source: $src, DetailType: $type, Detail: $detail, EventBusName: $bus}')
-
-          echo "Sending deployment start event..."
-          aws events put-events --entries "[$ENTRY]"
-
       - name: serverless deploy
         id: deploy
         uses: serverless/github-action@v3.1
         with:
           args: deploy --stage prod --verbose
 
-      - name: Record Deployment Result
-        if: always()
+      - name: Emit Deployment Event
         run: |
-          STATUS="${{ steps.deploy.outcome }}"
-          EVENT_TYPE="deployment_success"
-          if [ "$STATUS" != "success" ]; then
-            EVENT_TYPE="deployment_failure"
-            # Record the start time for MTTR calculation
-            INCIDENT_ID="${{ github.run_id }}"
-            START_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-            # Store incident info for later resolution
-            echo "incident_id=$INCIDENT_ID" >> $GITHUB_OUTPUT
-            echo "incident_start=$START_TIME" >> $GITHUB_OUTPUT
-          fi
-
-          EVENT_DETAIL=$(jq -c -n \
-            --arg did "${{ github.run_id }}" \
-            --arg cid "${{ github.sha }}" \
-            --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
-            --arg br "${{ github.ref }}" \
-            --arg st "${STATUS}" \
-            '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br, status: $st}')
-
-          ENTRY=$(jq -n \
-            --arg src "serverless-app" \
-            --arg type "$EVENT_TYPE" \
-            --arg detail "$EVENT_DETAIL" \
-            --arg bus "${{ steps.set-bus.outputs.bus_name }}" \
-            '{Source: $src, DetailType: $type, Detail: $detail, EventBusName: $bus}')
-
-          echo "Sending ${EVENT_TYPE} event..."
-          aws events put-events --entries "[$ENTRY]"
-
-      - name: Record Incident Resolution
-        if: failure()
-        run: |
-          RESOLUTION_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-
-          EVENT_DETAIL=$(jq -c -n \
-            --arg iid "${{ steps.deploy.outputs.incident_id }}" \
-            --arg st "${{ steps.deploy.outputs.incident_start }}" \
-            --arg rt "$RESOLUTION_TIME" \
-            '{incidentId: $iid, startTime: $st, resolveTime: $rt}')
-
-          ENTRY=$(jq -n \
-            --arg src "serverless-app" \
-            --arg type "incident_resolve" \
-            --arg detail "$EVENT_DETAIL" \
-            --arg bus "${{ steps.set-bus.outputs.bus_name }}" \
-            '{Source: $src, DetailType: $type, Detail: $detail, EventBusName: $bus}')
-
-          echo "Sending incident resolution event..."
-          aws events put-events --entries "[$ENTRY]"
+          aws events put-events --entries '[
+            {
+              "Source": "github.actions",
+              "DetailType": "DeploymentSuccess",
+              "Detail": "{\"commitTime\": \"${{ github.event.head_commit.timestamp }}\", \"deploymentTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}",
+              "EventBusName": "event-bus-serverless-bootstrap-dora-metrics"
+            }
+          ]'
