@@ -71,7 +71,7 @@ functions:
           method: post
 
   deploymentFrequency:
-    handler: src/dora/deploymentFrequency.handler
+    handler: src/functions/dora/deploymentFrequency.handler
     events:
       - eventBridge:
           eventBus: ${self:custom.doraEventBusName}
@@ -80,7 +80,7 @@ functions:
               - DeploymentSuccess
 
   leadTimeForChanges:
-    handler: src/dora/leadTimeForChanges.handler
+    handler: src/functions/dora/leadTimeForChanges.handler
     events:
       - eventBridge:
           eventBus: ${self:custom.doraEventBusName}
@@ -89,7 +89,7 @@ functions:
               - DeploymentSuccess
 
   changeFailureRate:
-    handler: src/dora/changeFailureRate.handler
+    handler: src/functions/dora/changeFailureRate.handler
     events:
       - eventBridge:
           eventBus: ${self:custom.doraEventBusName}
@@ -98,7 +98,7 @@ functions:
               - DeploymentFailure
 
   mttr:
-    handler: src/dora/mttr.handler
+    handler: src/functions/dora/mttr.handler
     events:
       - eventBridge:
           eventBus: ${self:custom.doraEventBusName}
