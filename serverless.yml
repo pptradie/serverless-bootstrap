@@ -120,94 +120,87 @@ DoraDashboard:
             "height": 6,
             "properties": {
               "metrics": [
-                [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { 
-                  "stat": "Sum", 
-                  "period": 60, 
-                  "label": "Deployments"
-                }]
+                [ 
+                  {
+                    "expression": "FILL(METRICS(), 0)",
+                    "label": "Number of Deployments",
+                    "id": "deployments"
+                  }
+                ],
+                [ 
+                  "${self:service}/DORA",
+                  "DeploymentFrequency",
+                  "Environment",
+                  "prod",
+                  {
+                    "stat": "Sum",
+                    "period": 60,
+                    "visible": false,
+                    "id": "rawDeployments"
+                  }
+                ]
               ],
               "view": "timeSeries",
+              "stacked": false,
+              "region": "${AWS::Region}",
               "title": "Deployment Frequency",
               "period": 60,
-              "region": "${AWS::Region}",
-              "yAxis": {
-                "left": {
-                  "min": 0
-                }
-              },
-              "liveData": true,
-              "legend": {
-                "position": "bottom"
-              }
-            }
-          },
-          {
-            "type": "metric",
-            "width": 12,
-            "height": 6,
-            "properties": {
-              "metrics": [
-                [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "prod", { 
-                  "stat": "Average",
-                  "period": 60,
-                  "label": "Lead Time (seconds)",
-                  "id": "leadTime"
-                }]
-              ],
-              "view": "timeSeries",
-              "title": "Lead Time for Changes",
-              "period": 60,
-              "region": "${AWS::Region}",
-              "yAxis": {
-                "left": {
-                  "min": 0
-                }
-              },
-              "liveData": true,
-              "legend": {
-                "position": "bottom"
-              }
-            }
-          },
-          {
-            "type": "metric",
-            "width": 12,
-            "height": 6,
-            "properties": {
-              "metrics": [
-                [{ 
-                  "expression": "100 * (m2 / m1)", 
-                  "label": "Change Failure Rate (%)", 
-                  "id": "e1",
-                  "period": 60
-                }],
-                [ "${self:service}/DORA", "DeploymentFailure", "Environment", "prod", { 
-                  "id": "m2", 
-                  "stat": "Sum", 
-                  "visible": false,
-                  "period": 60
-                }],
-                [ ".", "DeploymentFrequency", "Environment", "prod", { 
-                  "id": "m1", 
-                  "stat": "Sum", 
-                  "visible": false,
-                  "period": 60
-                }]
-              ],
-              "view": "timeSeries",
-              "title": "Change Failure Rate",
-              "period": 60,
-              "region": "${AWS::Region}",
               "yAxis": {
                 "left": {
                   "min": 0,
-                  "max": 100
+                  "showUnits": false
                 }
               },
-              "liveData": true,
               "legend": {
                 "position": "bottom"
-              }
+              },
+              "liveData": true,
+              "setPeriodToTimeRange": true,
+              "defaultPeriod": false
+            }
+          },
+          {
+            "type": "metric",
+            "width": 12,
+            "height": 6,
+            "properties": {
+              "metrics": [
+                [ 
+                  "${self:service}/DORA",
+                  "LeadTimeForChanges",
+                  "Environment",
+                  "prod",
+                  {
+                    "stat": "Average",
+                    "period": 60,
+                    "label": "Lead Time (Seconds)"
+                  }
+                ],
+                [
+                  {
+                    "expression": "m1/60",
+                    "label": "Lead Time (Minutes)",
+                    "id": "e1"
+                  }
+                ]
+              ],
+              "view": "timeSeries",
+              "stacked": false,
+              "region": "${AWS::Region}",
+              "title": "Lead Time for Changes",
+              "period": 60,
+              "yAxis": {
+                "left": {
+                  "min": 0,
+                  "showUnits": false
+                }
+              },
+              "legend": {
+                "position": "bottom"
+              },
+              "liveData": true,
+              "setPeriodToTimeRange": true,
+              "defaultPeriod": false
             }
           }
         ]
