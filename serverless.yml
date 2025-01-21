@@ -108,11 +108,6 @@ functions:
 
 resources:
   Resources:
-    # DoraEventBus:
-    #   Type: AWS::Events::EventBus
-    #   Properties:
-    #     Name: ${self:custom.doraEventBusName}
-
     DORAMetricsDashboard:
       Type: AWS::CloudWatch::Dashboard
       Properties:
@@ -137,8 +132,13 @@ resources:
                 "width": 6,
                 "height": 6,
                 "properties": {
-                  "metrics": [["Custom/DORA", "DeploymentFrequency"]],
-                  "view": "singleValue"
+                  "region": "ap-southeast-2",
+                  "metrics": [
+                    [ "Custom/DORA", "DeploymentFrequency" ]
+                  ],
+                  "view": "singleValue",
+                  "stat": "Sum",
+                  "period": 86400
                 }
               },
               {
@@ -148,8 +148,13 @@ resources:
                 "width": 6,
                 "height": 6,
                 "properties": {
-                  "metrics": [["Custom/DORA", "LeadTimeForChanges"]],
-                  "view": "singleValue"
+                  "region": "ap-southeast-2",
+                  "metrics": [
+                    [ "Custom/DORA", "LeadTimeForChanges" ]
+                  ],
+                  "view": "singleValue",
+                  "stat": "Average",
+                  "period": 86400
                 }
               },
               {
@@ -159,8 +164,13 @@ resources:
                 "width": 6,
                 "height": 6,
                 "properties": {
-                  "metrics": [["Custom/DORA", "ChangeFailureRate"]],
-                  "view": "singleValue"
+                  "region": "ap-southeast-2",
+                  "metrics": [
+                    [ "Custom/DORA", "ChangeFailureRate" ]
+                  ],
+                  "view": "singleValue",
+                  "stat": "Sum",
+                  "period": 86400
                 }
               },
               {
@@ -170,8 +180,13 @@ resources:
                 "width": 6,
                 "height": 6,
                 "properties": {
-                  "metrics": [["Custom/DORA", "MTTR"]],
-                  "view": "singleValue"
+                  "region": "ap-southeast-2",
+                  "metrics": [
+                    [ "Custom/DORA", "MTTR" ]
+                  ],
+                  "view": "singleValue",
+                  "stat": "Average",
+                  "period": 86400
                 }
               }
             ]
