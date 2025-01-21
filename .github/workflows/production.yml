@@ -167,26 +167,37 @@ jobs:
       - name: Verify CloudWatch Metrics
         if: always()
         run: |
-          echo "Checking metrics for the last hour..."
-          START_TIME=$(date -u -v-1H +"%Y-%m-%dT%H:%M:%S")
-          END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S")
-          
-          echo "Checking DeploymentFrequency..."
+          echo "Checking CloudWatch metrics..."
+
+          echo "1. Checking DeploymentFrequency..."
           aws cloudwatch get-metric-statistics \
             --namespace "serverless-bootstrap/DORA" \
             --metric-name "DeploymentFrequency" \
             --dimensions Name=Environment,Value=prod \
-            --start-time "2025-01-21T03:00:00" \
-            --end-time "2025-01-21T04:00:00" \
+            --start-time 2025-01-21T03:00:00 \
+            --end-time 2025-01-21T04:00:00 \
             --period 60 \
             --statistics Sum
             
-          echo "Checking LeadTimeForChanges..."
+          echo "2. Checking LeadTimeForChanges..."
           aws cloudwatch get-metric-statistics \
             --namespace "serverless-bootstrap/DORA" \
             --metric-name "LeadTimeForChanges" \
             --dimensions Name=Environment,Value=prod \
-            --start-time "2025-01-21T03:00:00" \
-            --end-time "2025-01-21T04:00:00" \
+            --start-time 2025-01-21T03:00:00 \
+            --end-time 2025-01-21T04:00:00 \
             --period 60 \
             --statistics Average
+
+          echo "3. Checking metric list..."
+          aws cloudwatch list-metrics \
+            --namespace "serverless-bootstrap/DORA" \
+            --dimensions Name=Environment,Value=prod
+
+          echo "4. Checking dashboard..."
+          aws cloudwatch get-dashboard \
+            --dashboard-name ${self:service}-${sls:stage}-dora-metrics || echo "Dashboard not found"
+
+          echo "5. Debug: Current time and environment"
+          echo "Current time (UTC): $(date -u +'%Y-%m-%dT%H:%M:%S')"
+          echo "Stage: ${sls:stage}"
