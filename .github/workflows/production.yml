@@ -104,19 +104,103 @@ jobs:
           role-to-assume: ${{ secrets.PROD_ROLE_AWS_ACTIONS_IN_GIT_HUB_ACTIONS }}
           aws-region: ap-southeast-2
 
+      - name: Set EventBus Name
+        id: set-bus
+        run: |
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          EVENT_BUS_NAME="serverless-bootstrap-prod-dora-bus-${AWS_ACCOUNT_ID}"
+          echo "bus_name=${EVENT_BUS_NAME}" >> $GITHUB_OUTPUT
+          echo "Using EventBus: ${EVENT_BUS_NAME}"
+
+      - name: Record Deployment Start
+        run: |
+          EVENT_DETAIL=$(jq -c -n \
+            --arg did "${{ github.run_id }}" \
+            --arg cid "${{ github.sha }}" \
+            --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
+            --arg br "${{ github.ref }}" \
+            '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br}')
+
+          ENTRY=$(jq -n \
+            --arg src "serverless-app" \
+            --arg type "deployment_start" \
+            --arg detail "$EVENT_DETAIL" \
+            --arg bus "${{ steps.set-bus.outputs.bus_name }}" \
+            '{Source: $src, DetailType: $type, Detail: $detail, EventBusName: $bus}')
+
+          echo "Sending deployment start event..."
+          aws events put-events --entries "[$ENTRY]"
+
       - name: serverless deploy
         id: deploy
         uses: serverless/github-action@v3.1
         with:
           args: deploy --stage prod --verbose
 
-      - name: Emit Deployment Event
+      - name: Record Deployment Result
+        if: always()
         run: |
-          aws events put-events --entries '[
-            {
-              "Source": "github.actions",
-              "DetailType": "DeploymentSuccess",
-              "Detail": "{\"commitTime\": \"${{ github.event.head_commit.timestamp }}\", \"deploymentTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}",
-              "EventBusName": "event-bus-serverless-bootstrap-dora-metrics"
-            }
-          ]'
+          STATUS="${{ steps.deploy.outcome }}"
+          EVENT_TYPE="deployment_success"
+          if [ "$STATUS" != "success" ]; then
+            EVENT_TYPE="deployment_failure"
+          fi
+
+          EVENT_DETAIL=$(jq -c -n \
+            --arg did "${{ github.run_id }}" \
+            --arg cid "${{ github.sha }}" \
+            --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
+            --arg br "${{ github.ref }}" \
+            --arg st "${STATUS}" \
+            '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br, status: $st}')
+
+          ENTRY=$(jq -n \
+            --arg src "serverless-app" \
+            --arg type "$EVENT_TYPE" \
+            --arg detail "$EVENT_DETAIL" \
+            --arg bus "${{ steps.set-bus.outputs.bus_name }}" \
+            '{Source: $src, DetailType: $type, Detail: $detail, EventBusName: $bus}')
+
+          echo "Sending ${EVENT_TYPE} event..."
+          aws events put-events --entries "[$ENTRY]"
+
+      - name: Verify CloudWatch Metrics
+        if: always()
+        run: |
+          echo "Checking CloudWatch metrics..."
+          START_TIME=$(date -u -d "1 hour ago" "+%Y-%m-%dT%H:%M:00Z")
+          END_TIME=$(date -u "+%Y-%m-%dT%H:%M:00Z")
+
+          echo "1. Checking DeploymentFrequency (current hour)..."
+          aws cloudwatch get-metric-statistics \
+            --namespace "serverless-bootstrap/DORA" \
+            --metric-name "DeploymentFrequency" \
+            --dimensions Name=Environment,Value=prod \
+            --start-time "$START_TIME" \
+            --end-time "$END_TIME" \
+            --period 60 \
+            --statistics Sum
+
+          echo "2. Checking LeadTimeForChanges (current hour)..."
+          aws cloudwatch get-metric-statistics \
+            --namespace "serverless-bootstrap/DORA" \
+            --metric-name "LeadTimeForChanges" \
+            --dimensions Name=Environment,Value=prod \
+            --start-time "$START_TIME" \
+            --end-time "$END_TIME" \
+            --period 60 \
+            --statistics Average
+
+          echo "3. Checking metric definitions..."
+          aws cloudwatch list-metrics \
+            --namespace "serverless-bootstrap/DORA" \
+            --dimensions Name=Environment,Value=prod
+
+          echo "4. Checking dashboard..."
+          aws cloudwatch get-dashboard \
+            --dashboard-name serverless-bootstrap-prod-dora-metrics || echo "Dashboard not found"
+
+          echo "5. Debug: Current time information"
+          echo "Current time (UTC): $(date -u "+%Y-%m-%dT%H:%M:%SZ")"
+          echo "Start time: $START_TIME"
+          echo "End time: $END_TIME"
