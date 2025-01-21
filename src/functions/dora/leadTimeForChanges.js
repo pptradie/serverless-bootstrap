@@ -7,17 +7,18 @@ exports.handler = async (event) => {
   const { commitTime, deploymentTime } = event.detail;
 
   try {
-    const leadTime = new Date(deploymentTime) - new Date(commitTime); // Time in ms
-    const leadTimeMinutes = leadTime / 60000; // Convert ms to minutes
+    // Calculate lead time in milliseconds and convert to seconds
+    const leadTime = (new Date(deploymentTime) - new Date(commitTime)) / 1000; // Convert ms to seconds
 
+    // Publish the metric to CloudWatch
     await cloudwatch
       .putMetricData({
         Namespace: process.env.DORA_METRICS_NAMESPACE,
         MetricData: [
           {
             MetricName: "LeadTimeForChanges",
-            Value: leadTimeMinutes,
-            Unit: "Minutes",
+            Value: leadTime,
+            Unit: "Seconds", // Use valid unit 'Seconds'
           },
         ],
       })

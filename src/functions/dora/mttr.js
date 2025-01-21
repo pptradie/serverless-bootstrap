@@ -7,17 +7,19 @@ exports.handler = async (event) => {
   const { startTime, resolutionTime } = event.detail;
 
   try {
-    const recoveryTime = new Date(resolutionTime) - new Date(startTime); // Time in ms
-    const recoveryTimeHours = recoveryTime / 3600000; // Convert ms to hours
+    // Calculate recovery time in milliseconds and convert to seconds
+    const recoveryTime =
+      (new Date(resolutionTime) - new Date(startTime)) / 1000; // Convert ms to seconds
 
+    // Publish the metric to CloudWatch
     await cloudwatch
       .putMetricData({
         Namespace: process.env.DORA_METRICS_NAMESPACE,
         MetricData: [
           {
             MetricName: "MTTR",
-            Value: recoveryTimeHours,
-            Unit: "Hours",
+            Value: recoveryTime,
+            Unit: "Seconds", // Use valid unit 'Seconds'
           },
         ],
       })
