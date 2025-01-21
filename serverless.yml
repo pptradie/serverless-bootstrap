@@ -92,7 +92,7 @@ resources:
     DoraDashboard:
       Type: AWS::CloudWatch::Dashboard
       Properties:
-        DashboardName: ${self:service}-${sls:stage}-dora-metrics
+        DashboardName: dashboard-${self:service}-${sls:stage}-dora-metrics
         DashboardBody: !Sub |
           {
             "widgets": [
