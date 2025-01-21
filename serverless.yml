@@ -108,10 +108,10 @@ functions:
 
 resources:
   Resources:
-    DoraEventBus:
-      Type: AWS::Events::EventBus
-      Properties:
-        Name: ${self:custom.doraEventBusName}
+    # DoraEventBus:
+    #   Type: AWS::Events::EventBus
+    #   Properties:
+    #     Name: ${self:custom.doraEventBusName}
 
     DORAMetricsDashboard:
       Type: AWS::CloudWatch::Dashboard
