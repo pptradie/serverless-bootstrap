@@ -167,26 +167,40 @@ jobs:
       - name: Verify CloudWatch Metrics
         if: always()
         run: |
-          echo "Checking metrics for the last hour..."
-          START_TIME=$(date -u -v-1H +"%Y-%m-%dT%H:%M:%S")
-          END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S")
-          
-          echo "Checking DeploymentFrequency..."
+          echo "Checking CloudWatch metrics..."
+          START_TIME=$(date -u -d "1 hour ago" "+%Y-%m-%dT%H:%M:00Z")
+          END_TIME=$(date -u "+%Y-%m-%dT%H:%M:00Z")
+
+          echo "1. Checking DeploymentFrequency (current hour)..."
           aws cloudwatch get-metric-statistics \
             --namespace "serverless-bootstrap/DORA" \
             --metric-name "DeploymentFrequency" \
             --dimensions Name=Environment,Value=prod \
-            --start-time "2025-01-21T03:00:00" \
-            --end-time "2025-01-21T04:00:00" \
+            --start-time "$START_TIME" \
+            --end-time "$END_TIME" \
             --period 60 \
             --statistics Sum
-            
-          echo "Checking LeadTimeForChanges..."
+
+          echo "2. Checking LeadTimeForChanges (current hour)..."
           aws cloudwatch get-metric-statistics \
             --namespace "serverless-bootstrap/DORA" \
             --metric-name "LeadTimeForChanges" \
             --dimensions Name=Environment,Value=prod \
-            --start-time "2025-01-21T03:00:00" \
-            --end-time "2025-01-21T04:00:00" \
+            --start-time "$START_TIME" \
+            --end-time "$END_TIME" \
             --period 60 \
             --statistics Average
+
+          echo "3. Checking metric definitions..."
+          aws cloudwatch list-metrics \
+            --namespace "serverless-bootstrap/DORA" \
+            --dimensions Name=Environment,Value=prod
+
+          echo "4. Checking dashboard..."
+          aws cloudwatch get-dashboard \
+            --dashboard-name serverless-bootstrap-prod-dora-metrics || echo "Dashboard not found"
+
+          echo "5. Debug: Current time information"
+          echo "Current time (UTC): $(date -u "+%Y-%m-%dT%H:%M:%SZ")"
+          echo "Start time: $START_TIME"
+          echo "End time: $END_TIME"
