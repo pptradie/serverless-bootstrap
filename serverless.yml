@@ -48,6 +48,7 @@ provider:
         - Effect: Allow
           Action:
             - cloudwatch:PutMetricData
+            - cloudwatch:GetMetricStatistics
           Resource: "*"
         - Effect: Allow
           Action:
@@ -121,25 +122,22 @@ DoraDashboard:
               "metrics": [
                 [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { 
                   "stat": "Sum", 
-                  "period": 300, 
-                  "label": "Deployments (5min)"
+                  "period": 60, 
+                  "label": "Deployments"
                 }]
               ],
               "view": "timeSeries",
               "title": "Deployment Frequency",
-              "period": 300,
+              "period": 60,
               "region": "${AWS::Region}",
               "yAxis": {
                 "left": {
                   "min": 0
                 }
               },
-              "annotations": {
-                "horizontal": []
-              },
-              "timeRange": {
-                "relativeStart": "-PT3H",
-                "relativeEnd": "PT0H"
+              "liveData": true,
+              "legend": {
+                "position": "bottom"
               }
             }
           },
@@ -151,31 +149,23 @@ DoraDashboard:
               "metrics": [
                 [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "prod", { 
                   "stat": "Average",
-                  "period": 300,
+                  "period": 60,
                   "label": "Lead Time (seconds)",
                   "id": "leadTime"
-                }],
-                [{ 
-                  "expression": "leadTime/60", 
-                  "label": "Lead Time (minutes)", 
-                  "id": "leadTimeMin"
                 }]
               ],
               "view": "timeSeries",
               "title": "Lead Time for Changes",
-              "period": 300,
+              "period": 60,
               "region": "${AWS::Region}",
               "yAxis": {
                 "left": {
                   "min": 0
                 }
               },
-              "annotations": {
-                "horizontal": []
-              },
-              "timeRange": {
-                "relativeStart": "-PT3H",
-                "relativeEnd": "PT0H"
+              "liveData": true,
+              "legend": {
+                "position": "bottom"
               }
             }
           },
@@ -186,24 +176,27 @@ DoraDashboard:
             "properties": {
               "metrics": [
                 [{ 
-                  "expression": "(FAILURES / TOTAL) * 100", 
+                  "expression": "100 * (m2 / m1)", 
                   "label": "Change Failure Rate (%)", 
-                  "id": "e1"
+                  "id": "e1",
+                  "period": 60
                 }],
                 [ "${self:service}/DORA", "DeploymentFailure", "Environment", "prod", { 
-                  "id": "FAILURES", 
+                  "id": "m2", 
                   "stat": "Sum", 
-                  "visible": false 
+                  "visible": false,
+                  "period": 60
                 }],
                 [ ".", "DeploymentFrequency", "Environment", "prod", { 
-                  "id": "TOTAL", 
+                  "id": "m1", 
                   "stat": "Sum", 
-                  "visible": false 
+                  "visible": false,
+                  "period": 60
                 }]
               ],
               "view": "timeSeries",
               "title": "Change Failure Rate",
-              "period": 300,
+              "period": 60,
               "region": "${AWS::Region}",
               "yAxis": {
                 "left": {
@@ -211,12 +204,9 @@ DoraDashboard:
                   "max": 100
                 }
               },
-              "annotations": {
-                "horizontal": []
-              },
-              "timeRange": {
-                "relativeStart": "-PT3H",
-                "relativeEnd": "PT0H"
+              "liveData": true,
+              "legend": {
+                "position": "bottom"
               }
             }
           }
