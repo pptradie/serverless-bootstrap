@@ -144,6 +144,12 @@ jobs:
           EVENT_TYPE="deployment_success"
           if [ "$STATUS" != "success" ]; then
             EVENT_TYPE="deployment_failure"
+            # Record the start time for MTTR calculation
+            INCIDENT_ID="${{ github.run_id }}"
+            START_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+            # Store incident info for later resolution
+            echo "incident_id=$INCIDENT_ID" >> $GITHUB_OUTPUT
+            echo "incident_start=$START_TIME" >> $GITHUB_OUTPUT
           fi
 
           EVENT_DETAIL=$(jq -c -n \
@@ -164,43 +170,23 @@ jobs:
           echo "Sending ${EVENT_TYPE} event..."
           aws events put-events --entries "[$ENTRY]"
 
-      - name: Verify CloudWatch Metrics
-        if: always()
+      - name: Record Incident Resolution
+        if: failure()
         run: |
-          echo "Checking CloudWatch metrics..."
-          START_TIME=$(date -u -d "1 hour ago" "+%Y-%m-%dT%H:%M:00Z")
-          END_TIME=$(date -u "+%Y-%m-%dT%H:%M:00Z")
+          RESOLUTION_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 
-          echo "1. Checking DeploymentFrequency (current hour)..."
-          aws cloudwatch get-metric-statistics \
-            --namespace "serverless-bootstrap/DORA" \
-            --metric-name "DeploymentFrequency" \
-            --dimensions Name=Environment,Value=prod \
-            --start-time "$START_TIME" \
-            --end-time "$END_TIME" \
-            --period 60 \
-            --statistics Sum
+          EVENT_DETAIL=$(jq -c -n \
+            --arg iid "${{ steps.deploy.outputs.incident_id }}" \
+            --arg st "${{ steps.deploy.outputs.incident_start }}" \
+            --arg rt "$RESOLUTION_TIME" \
+            '{incidentId: $iid, startTime: $st, resolveTime: $rt}')
 
-          echo "2. Checking LeadTimeForChanges (current hour)..."
-          aws cloudwatch get-metric-statistics \
-            --namespace "serverless-bootstrap/DORA" \
-            --metric-name "LeadTimeForChanges" \
-            --dimensions Name=Environment,Value=prod \
-            --start-time "$START_TIME" \
-            --end-time "$END_TIME" \
-            --period 60 \
-            --statistics Average
+          ENTRY=$(jq -n \
+            --arg src "serverless-app" \
+            --arg type "incident_resolve" \
+            --arg detail "$EVENT_DETAIL" \
+            --arg bus "${{ steps.set-bus.outputs.bus_name }}" \
+            '{Source: $src, DetailType: $type, Detail: $detail, EventBusName: $bus}')
 
-          echo "3. Checking metric definitions..."
-          aws cloudwatch list-metrics \
-            --namespace "serverless-bootstrap/DORA" \
-            --dimensions Name=Environment,Value=prod
-
-          echo "4. Checking dashboard..."
-          aws cloudwatch get-dashboard \
-            --dashboard-name serverless-bootstrap-prod-dora-metrics || echo "Dashboard not found"
-
-          echo "5. Debug: Current time information"
-          echo "Current time (UTC): $(date -u "+%Y-%m-%dT%H:%M:%SZ")"
-          echo "Start time: $START_TIME"
-          echo "End time: $END_TIME"
+          echo "Sending incident resolution event..."
+          aws events put-events --entries "[$ENTRY]"

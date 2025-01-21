@@ -29,7 +29,7 @@ const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
         Unit: unit,
         Timestamp: timestamp,
         Dimensions: metricDimensions,
-        StorageResolution: 60, // Standard resolution (1 minute)
+        StorageResolution: 60,
       },
     ],
     Namespace: METRIC_NAMESPACE,
@@ -40,29 +40,6 @@ const putMetric = async (name, value, unit = "Count", dimensions = {}) => {
   try {
     await cloudwatch.putMetricData(params).promise();
     console.log(`Successfully put metric ${name}`);
-
-    // Wait briefly before verification
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Verify metric was stored
-    const verifyParams = {
-      Namespace: METRIC_NAMESPACE,
-      MetricName: name,
-      Dimensions: metricDimensions,
-      StartTime: new Date(timestamp.getTime() - 5 * 60 * 1000),
-      EndTime: new Date(timestamp.getTime() + 5 * 60 * 1000),
-      Period: 60,
-      Statistics: ["Sum", "Average"],
-    };
-
-    const verifyResult = await cloudwatch
-      .getMetricStatistics(verifyParams)
-      .promise();
-    console.log(
-      `Verification result for ${name}:`,
-      JSON.stringify(verifyResult, null, 2)
-    );
-
     return true;
   } catch (error) {
     console.error(`Error putting metric ${name}:`, error);
@@ -92,8 +69,42 @@ const processDeploymentSuccess = async (event) => {
       console.error("Error processing deployment success:", error);
       throw error;
     }
-  } else {
-    console.log(`Skipping metrics for environment: ${ENVIRONMENT}`);
+  }
+};
+
+const processDeploymentFailure = async (event) => {
+  if (ENVIRONMENT === "prod") {
+    try {
+      // Record deployment failure
+      await putMetric("DeploymentFailures", 1, "Count");
+      // Record incident start time for MTTR
+      await putMetric("IncidentStart", 1, "Count", {
+        IncidentId: event.detail.deploymentId,
+      });
+    } catch (error) {
+      console.error("Error processing deployment failure:", error);
+      throw error;
+    }
+  }
+};
+
+const processIncidentResolve = async (event) => {
+  if (ENVIRONMENT === "prod") {
+    try {
+      const incidentId = event.detail.incidentId;
+      const resolveTime = new Date(event.time);
+      const startTime = new Date(event.detail.startTime);
+
+      // Calculate MTTR in minutes
+      const mttrMinutes = Math.round((resolveTime - startTime) / (1000 * 60));
+
+      await putMetric("MTTR", mttrMinutes, "Minutes", {
+        IncidentId: incidentId,
+      });
+    } catch (error) {
+      console.error("Error processing incident resolve:", error);
+      throw error;
+    }
   }
 };
 
@@ -104,6 +115,12 @@ exports.handler = async (event) => {
     switch (event["detail-type"]) {
       case "deployment_success":
         await processDeploymentSuccess(event);
+        break;
+      case "deployment_failure":
+        await processDeploymentFailure(event);
+        break;
+      case "incident_resolve":
+        await processIncidentResolve(event);
         break;
       default:
         console.log(`Unhandled detail-type: ${event["detail-type"]}`);
