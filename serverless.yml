@@ -116,76 +116,20 @@ DoraDashboard:
         "widgets": [
           {
             "type": "metric",
-            "width": 12,
-            "height": 6,
-            "properties": {
-              "view": "timeSeries",
-              "metrics": [
-                [ "serverless-bootstrap/DORA", "DeploymentFrequency", "Environment", "prod", { 
-                  "stat": "Sum",
-                  "period": 60,
-                  "label": "Deployments"
-                }]
-              ],
-              "region": "${AWS::Region}",
-              "title": "Deployment Frequency",
-              "yAxis": {
-                "left": {
-                  "min": 0,
-                  "label": "Count"
-                }
-              },
-              "defaultTimeRange": "-PT12H"
-            }
-          },
-          {
-            "type": "metric",
-            "width": 12,
-            "height": 6,
-            "properties": {
-              "view": "timeSeries",
-              "metrics": [
-                [ "serverless-bootstrap/DORA", "LeadTimeForChanges", "Environment", "prod", { 
-                  "stat": "Average",
-                  "period": 60,
-                  "label": "Lead Time"
-                }]
-              ],
-              "region": "${AWS::Region}",
-              "title": "Lead Time for Changes",
-              "yAxis": {
-                "left": {
-                  "min": 0,
-                  "label": "Seconds"
-                }
-              },
-              "defaultTimeRange": "-PT12H"
-            }
-          },
-          {
-            "type": "metric",
             "width": 24,
-            "height": 3,
+            "height": 6,
             "properties": {
+              "view": "timeSeries",
               "metrics": [
-                [ "serverless-bootstrap/DORA", "DeploymentFrequency", "Environment", "prod", { 
-                  "stat": "Sum",
-                  "period": 3600,
-                  "label": "Deployments (last hour)"
-                }],
-                [ "serverless-bootstrap/DORA", "LeadTimeForChanges", "Environment", "prod", { 
-                  "stat": "Average",
-                  "period": 3600,
-                  "label": "Avg Lead Time (seconds)"
-                }]
+                [ "serverless-bootstrap/DORA", "DeploymentFrequency", "Environment", "prod" ]
               ],
-              "view": "singleValue",
               "region": "${AWS::Region}",
-              "title": "Last Hour Summary",
-              "setPeriodToTimeRange": false,
-              "singleValueFullPrecision": false
+              "stat": "Sum",
+              "period": 60,
+              "title": "Deployment Frequency",
+              "start": "2025-01-21T03:00:00",
+              "end": "2025-01-21T04:00:00"
             }
           }
-        ],
-        "periodOverride": "inherit"
+        ]
       }
