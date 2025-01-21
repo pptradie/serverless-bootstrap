@@ -47,8 +47,7 @@ provider:
       statements:
         - Effect: Allow
           Action:
-            - cloudwatch:PutMetricData
-            - cloudwatch:GetMetricStatistics
+            - "cloudwatch:*"
           Resource: "*"
         - Effect: Allow
           Action:
@@ -107,29 +106,63 @@ resources:
     #       Action: events:PutEvents
     #       Resource: !GetAtt DoraEventBus.Arn
 
-DoraDashboard:
-  Type: AWS::CloudWatch::Dashboard
-  Properties:
-    DashboardName: ${self:service}-${sls:stage}-dora-metrics
-    DashboardBody: !Sub |
-      {
-        "widgets": [
+    DoraDashboard:
+      Type: AWS::CloudWatch::Dashboard
+      Properties:
+        DashboardName: ${self:service}-${sls:stage}-dora-metrics
+        DashboardBody: !Sub |
           {
-            "type": "metric",
-            "width": 24,
-            "height": 6,
-            "properties": {
-              "view": "timeSeries",
-              "metrics": [
-                [ "serverless-bootstrap/DORA", "DeploymentFrequency", "Environment", "prod" ]
-              ],
-              "region": "${AWS::Region}",
-              "stat": "Sum",
-              "period": 60,
-              "title": "Deployment Frequency",
-              "start": "2025-01-21T03:00:00",
-              "end": "2025-01-21T04:00:00"
-            }
+            "widgets": [
+              {
+                "type": "metric",
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "metrics": [
+                    [ "serverless-bootstrap/DORA", "DeploymentFrequency", "Environment", "prod", {
+                      "id": "m1",
+                      "label": "Deployments",
+                      "stat": "Sum",
+                      "visible": true
+                    } ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Deployment Frequency",
+                  "period": 60,
+                  "yAxis": {
+                    "left": {
+                      "showUnits": false,
+                      "min": 0
+                    }
+                  }
+                }
+              },
+              {
+                "type": "metric",
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "metrics": [
+                    [ "serverless-bootstrap/DORA", "LeadTimeForChanges", "Environment", "prod", {
+                      "label": "Average Lead Time",
+                      "stat": "Average",
+                      "visible": true
+                    } ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Lead Time for Changes",
+                  "period": 60,
+                  "yAxis": {
+                    "left": {
+                      "showUnits": false,
+                      "min": 0
+                    }
+                  }
+                }
+              }
+            ]
           }
-        ]
-      }
