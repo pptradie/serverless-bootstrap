@@ -97,243 +97,91 @@ resources:
           {
             "widgets": [
               {
-                "type": "text",
-                "width": 24,
-                "height": 1,
-                "properties": {
-                  "markdown": "# Dashboard for DORA Metrics Per Day"
-                }
-              },
-              {
                 "type": "metric",
-                "width": 6,
+                "width": 12,
                 "height": 6,
                 "properties": {
-                  "view": "singleValue",
                   "metrics": [
                     [ "${self:service}/DORA", "MTTR", "Environment", "prod", {
-                      "label": "MTTR Per Day",
-                      "stat": "Average",
-                      "period": 86400
+                      "label": "Mean Time To Recovery (MTTR)",
+                      "stat": "Average"
                     } ]
                   ],
+                  "view": "timeSeries",
                   "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "MTTR Per Day",
-                  "period": 86400
+                  "title": "Mean Time To Recovery",
+                  "period": 300,
+                  "yAxis": {
+                    "left": {
+                      "label": "Minutes"
+                    }
+                  }
                 }
               },
               {
                 "type": "metric",
-                "width": 6,
+                "width": 12,
                 "height": 6,
                 "properties": {
-                  "view": "singleValue",
                   "metrics": [
-                    [ { "expression": "(m2 / m1) * 100", "label": "Change Failure Rate (%)" } ],
-                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { "id": "m1", "stat": "Sum", "visible": false, "period": 86400 } ],
-                    [ ".", "DeploymentFailures", "Environment", "prod", { "id": "m2", "stat": "Sum", "visible": false, "period": 86400 } ]
+                    [ { "expression": "(m2 / m1) * 100", "label": "Change Failure Rate (%)", "id": "e1" } ],
+                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { "id": "m1", "visible": false, "stat": "Sum" } ],
+                    [ ".", "DeploymentFailures", "Environment", "prod", { "id": "m2", "visible": false, "stat": "Sum" } ]
                   ],
+                  "view": "timeSeries",
                   "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Change Failure Rate Per Day",
-                  "period": 86400
+                  "title": "Change Failure Rate",
+                  "period": 300,
+                  "yAxis": {
+                    "left": {
+                      "label": "Percentage (%)"
+                    }
+                  }
                 }
               },
               {
                 "type": "metric",
-                "width": 6,
+                "width": 12,
                 "height": 6,
                 "properties": {
-                  "view": "singleValue",
                   "metrics": [
                     [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", {
-                      "label": "Deployments Per Day",
-                      "stat": "Sum",
-                      "period": 86400
+                      "label": "Deployment Frequency",
+                      "stat": "Sum"
                     } ]
                   ],
+                  "view": "timeSeries",
                   "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Deployment Frequency Per Day",
-                  "period": 86400
+                  "title": "Deployment Frequency",
+                  "period": 300,
+                  "yAxis": {
+                    "left": {
+                      "label": "Count"
+                    }
+                  }
                 }
               },
               {
                 "type": "metric",
-                "width": 6,
+                "width": 12,
                 "height": 6,
                 "properties": {
-                  "view": "singleValue",
                   "metrics": [
                     [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "prod", {
-                      "label": "Lead Time Per Day (Minutes)",
-                      "stat": "Average",
-                      "period": 86400
+                      "label": "Lead Time for Changes",
+                      "stat": "Average"
                     } ]
                   ],
+                  "view": "timeSeries",
                   "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Lead Time for Change Per Day",
-                  "period": 86400
-                }
-              },
-              {
-                "type": "text",
-                "width": 24,
-                "height": 1,
-                "properties": {
-                  "markdown": "# Dashboard for DORA Metrics Per Week"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ "${self:service}/DORA", "MTTR", "Environment", "prod", {
-                      "label": "MTTR Per Week",
-                      "stat": "Average",
-                      "period": 604800
-                    } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "MTTR Per Week"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ { "expression": "(m2 / m1) * 100", "label": "Change Failure Rate (%)" } ],
-                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { "id": "m1", "stat": "Sum", "visible": false, "period": 604800 } ],
-                    [ ".", "DeploymentFailures", "Environment", "prod", { "id": "m2", "stat": "Sum", "visible": false, "period": 604800 } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Change Failure Rate Per Week"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", {
-                      "label": "Deployments Per Week",
-                      "stat": "Sum",
-                      "period": 604800
-                    } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Deployment Frequency Per Week"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "prod", {
-                      "label": "Lead Time Per Week (Minutes)",
-                      "stat": "Average",
-                      "period": 604800
-                    } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Lead Time for Change Per Week"
-                }
-              },
-              {
-                "type": "text",
-                "width": 24,
-                "height": 1,
-                "properties": {
-                  "markdown": "# Dashboard for DORA Metrics Per Month"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ "${self:service}/DORA", "MTTR", "Environment", "prod", {
-                      "label": "MTTR Per Month",
-                      "stat": "Average",
-                      "period": 2592000
-                    } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "MTTR Per Month"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ { "expression": "(m2 / m1) * 100", "label": "Change Failure Rate (%)" } ],
-                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { "id": "m1", "stat": "Sum", "visible": false, "period": 2592000 } ],
-                    [ ".", "DeploymentFailures", "Environment", "prod", { "id": "m2", "stat": "Sum", "visible": false, "period": 2592000 } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Change Failure Rate Per Month"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", {
-                      "label": "Deployments Per Month",
-                      "stat": "Sum",
-                      "period": 2592000
-                    } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Deployment Frequency Per Month"
-                }
-              },
-              {
-                "type": "metric",
-                "width": 6,
-                "height": 6,
-                "properties": {
-                  "view": "singleValue",
-                  "metrics": [
-                    [ "${self:service}/DORA", "LeadTimeForChanges", "Environment", "prod", {
-                      "label": "Lead Time Per Month (Minutes)",
-                      "stat": "Average",
-                      "period": 2592000
-                    } ]
-                  ],
-                  "region": "${AWS::Region}",
-                  "setPeriodToTimeRange": false,
-                  "title": "Lead Time for Change Per Month"
+                  "title": "Lead Time for Changes",
+                  "period": 300,
+                  "yAxis": {
+                    "left": {
+                      "label": "Minutes"
+                    }
+                  }
                 }
               }
             ]
           }
-
