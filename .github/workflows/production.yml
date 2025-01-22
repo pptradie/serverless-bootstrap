@@ -4,18 +4,60 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
 
 jobs:
+  get-change-info:
+    name: Get Change Information
+    runs-on: ubuntu-latest
+    outputs:
+      change_start_time: ${{ steps.change-info.outputs.change_start_time }}
+      pr_number: ${{ steps.change-info.outputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get Change Start Time
+        id: change-info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Direct PR event
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            PR_CREATE_TIME="${{ github.event.pull_request.created_at }}"
+          else
+            # Push event - try to find associated PR
+            PR_NUMBER=$(gh pr list --search "${{ github.sha }}" --state merged --json number -q '.[0].number')
+            if [[ ! -z "$PR_NUMBER" ]]; then
+              PR_CREATE_TIME=$(gh pr view $PR_NUMBER --json createdAt -q .createdAt)
+            fi
+          fi
+
+          if [[ ! -z "$PR_CREATE_TIME" ]]; then
+            echo "change_start_time=$PR_CREATE_TIME" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          else
+            # Fallback to commit time if no PR found
+            COMMIT_TIME=$(git log -1 --format=%cd --date=iso8601 ${{ github.sha }})
+            echo "change_start_time=$COMMIT_TIME" >> $GITHUB_OUTPUT
+          fi
+
   lint:
     name: Code Quality Check
     runs-on: ubuntu-latest
+    needs: [get-change-info]
     steps:
       - uses: actions/checkout@v3
 
       - name: Use Node.js 18.x
         uses: actions/setup-node@v3
         with:
-          node-version: "18.17.1" # AWS Lambda uses Node.js 18.x
+          node-version: "18.17.1"
           cache: "npm"
 
       - name: Install dependencies
@@ -44,11 +86,6 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
 
-      - name: Debug coverage directory
-        run: |
-          ls -la
-          ls -la coverage || echo "Coverage directory not found"
-
       - name: Upload coverage results
         uses: actions/upload-artifact@v3
         if: always()
@@ -70,26 +107,25 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [lint, test, code-analysis]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [get-change-info, lint, test, code-analysis]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    outputs:
+      incident_id: ${{ steps.deploy.outputs.incident_id }}
+      incident_start: ${{ steps.deploy.outputs.incident_start }}
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Get Commit Time
-        id: get-commit
-        run: |
-          COMMIT_TIME=$(git log -1 --format=%cd --date=iso8601 ${{ github.sha }})
-          echo "commit_time=$COMMIT_TIME" >> $GITHUB_OUTPUT
-
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 18.x
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "18.17.1"
+          cache: "npm"
 
       - run: npm ci
 
@@ -117,9 +153,17 @@ jobs:
           EVENT_DETAIL=$(jq -c -n \
             --arg did "${{ github.run_id }}" \
             --arg cid "${{ github.sha }}" \
-            --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
+            --arg cst "${{ needs.get-change-info.outputs.change_start_time }}" \
+            --arg prn "${{ needs.get-change-info.outputs.pr_number }}" \
             --arg br "${{ github.ref }}" \
-            '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br}')
+            '{
+              deploymentId: $did,
+              commitId: $cid,
+              changeStartTime: $cst,
+              pullRequestNumber: $prn,
+              branch: $br,
+              changeType: "deployment"
+            }')
 
           ENTRY=$(jq -n \
             --arg src "serverless-app" \
@@ -142,11 +186,18 @@ jobs:
         run: |
           STATUS="${{ steps.deploy.outcome }}"
           EVENT_TYPE="deployment_success"
+          SEVERITY="none"
+          IMPACTED_SERVICES="[]"
+
           if [ "$STATUS" != "success" ]; then
             EVENT_TYPE="deployment_failure"
+            SEVERITY="high"
+            IMPACTED_SERVICES='["api", "database"]'
+            
             # Record the start time for MTTR calculation
             INCIDENT_ID="${{ github.run_id }}"
             START_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+            
             # Store incident info for later resolution
             echo "incident_id=$INCIDENT_ID" >> $GITHUB_OUTPUT
             echo "incident_start=$START_TIME" >> $GITHUB_OUTPUT
@@ -155,10 +206,23 @@ jobs:
           EVENT_DETAIL=$(jq -c -n \
             --arg did "${{ github.run_id }}" \
             --arg cid "${{ github.sha }}" \
-            --arg ct "${{ steps.get-commit.outputs.commit_time }}" \
+            --arg cst "${{ needs.get-change-info.outputs.change_start_time }}" \
+            --arg prn "${{ needs.get-change-info.outputs.pr_number }}" \
             --arg br "${{ github.ref }}" \
             --arg st "${STATUS}" \
-            '{deploymentId: $did, commitId: $cid, commitTime: $ct, branch: $br, status: $st}')
+            --arg sev "${SEVERITY}" \
+            --argjson imp "${IMPACTED_SERVICES}" \
+            '{
+              deploymentId: $did,
+              commitId: $cid,
+              changeStartTime: $cst,
+              pullRequestNumber: $prn,
+              branch: $br,
+              status: $st,
+              severity: $sev,
+              impactedServices: $imp,
+              changeType: "deployment"
+            }')
 
           ENTRY=$(jq -n \
             --arg src "serverless-app" \
@@ -174,12 +238,25 @@ jobs:
         if: failure()
         run: |
           RESOLUTION_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
-          
+
           EVENT_DETAIL=$(jq -c -n \
             --arg iid "${{ steps.deploy.outputs.incident_id }}" \
+            --arg did "${{ github.run_id }}" \
             --arg st "${{ steps.deploy.outputs.incident_start }}" \
             --arg rt "$RESOLUTION_TIME" \
-            '{incidentId: $iid, startTime: $st, resolveTime: $rt}')
+            --arg rm "rollback" \
+            --arg sev "high" \
+            --argjson imp '["api", "database"]' \
+            '{
+              incidentId: $iid,
+              deploymentId: $did,
+              startTime: $st,
+              resolveTime: $rt,
+              resolutionMethod: $rm,
+              severity: $sev,
+              impactedServices: $imp,
+              changeType: "incident"
+            }')
 
           ENTRY=$(jq -n \
             --arg src "serverless-app" \
