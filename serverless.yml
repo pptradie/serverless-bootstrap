@@ -111,7 +111,20 @@ resources:
                   "region": "${AWS::Region}",
                   "title": "Mean Time To Recovery (MTTR)",
                   "period": 300,
-                  "setPeriodToTimeRange": true
+                  "setPeriodToTimeRange": true,
+                  "sparkline": true,
+                  "trend": true,
+                  "liveData": true,
+                  "singleValueFullPrecision": false,
+                  "annotations": {
+                    "horizontal": [
+                      {
+                        "label": "Elite Target (<1 hour)",
+                        "value": 60,
+                        "color": "#2ca02c"
+                      }
+                    ]
+                  }
                 }
               },
               {
@@ -121,14 +134,25 @@ resources:
                 "properties": {
                   "metrics": [
                     [ { "expression": "(m2 / m1) * 100", "label": "Change Failure Rate (%)", "id": "e1" } ],
-                    [ "${self:service}/DORA", "DeploymentFrequency", "Environment", "prod", { "id": "m1", "visible": false, "stat": "Sum" } ],
+                    [ "${self:service}/DORA", "TotalDeployments", "Environment", "prod", { "id": "m1", "visible": false, "stat": "Sum" } ],
                     [ ".", "DeploymentFailures", "Environment", "prod", { "id": "m2", "visible": false, "stat": "Sum" } ]
                   ],
                   "view": "singleValue",
                   "region": "${AWS::Region}",
                   "title": "Change Failure Rate",
                   "period": 300,
-                  "setPeriodToTimeRange": true
+                  "setPeriodToTimeRange": true,
+                  "sparkline": true,
+                  "trend": true,
+                  "annotations": {
+                    "horizontal": [
+                      {
+                        "label": "Elite Target (<15%)",
+                        "value": 15,
+                        "color": "#2ca02c"
+                      }
+                    ]
+                  }
                 }
               },
               {
@@ -146,7 +170,18 @@ resources:
                   "region": "${AWS::Region}",
                   "title": "Deployment Frequency",
                   "period": 300,
-                  "setPeriodToTimeRange": true
+                  "setPeriodToTimeRange": true,
+                  "sparkline": true,
+                  "trend": true,
+                  "annotations": {
+                    "horizontal": [
+                      {
+                        "label": "Elite Target (>1 per day)",
+                        "value": 1,
+                        "color": "#2ca02c"
+                      }
+                    ]
+                  }
                 }
               },
               {
@@ -165,7 +200,17 @@ resources:
                   "title": "Lead Time for Changes",
                   "period": 300,
                   "setPeriodToTimeRange": true,
-                  "sparkline": false
+                  "sparkline": true,
+                  "trend": true,
+                  "annotations": {
+                    "horizontal": [
+                      {
+                        "label": "Elite Target (<1 day)",
+                        "value": 1440,
+                        "color": "#2ca02c"
+                      }
+                    ]
+                  }
                 }
               }
             ]
